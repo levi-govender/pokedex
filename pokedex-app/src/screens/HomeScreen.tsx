@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 
-import { listPokemons } from '../services/pokeAPI';
+import { listPokemons } from '../services/pokeapi';
 import type { NamedAPIResource } from '../services/pokeAPI.type';
 
 function idFromUrl(url: string) {
