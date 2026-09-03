@@ -1,14 +1,21 @@
 import { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 
-import { getPokemonList } from '../services/pokeapi';
-import type { IndexedPokemon } from '../services/pokeapi.types';
+import { listPokemons } from '../services/pokeAPI';
+import type { NamedAPIResource } from '../services/pokeAPI.type';
+
+function idFromUrl(url: string) {
+	const segments = url.split('/').filter(Boolean);
+	return segments[segments.length - 1];
+}
 
 export default function HomeScreen() {
-	const [pokemon, setPokemon] = useState<IndexedPokemon[]>([]);
+	const [pokemon, setPokemon] = useState<NamedAPIResource[]>([]);
 
 	useEffect(() => {
-		getPokemonList().then(setPokemon);
+		listPokemons().then((data) => {
+			setPokemon(data.results);
+		});
 	}, []);
 
 	return (
@@ -19,10 +26,10 @@ export default function HomeScreen() {
 			</View>
 			<FlatList
 				data={pokemon}
-				keyExtractor={(item) => String(item.id)}
+				keyExtractor={(item) => item.url}
 				renderItem={({ item }) => (
 					<View style={styles.row}>
-						<Text style={styles.index}>{item.id}</Text>
+						<Text style={styles.index}>{idFromUrl(item.url)}</Text>
 						<Text style={styles.name}>{item.name}</Text>
 					</View>
 				)}
