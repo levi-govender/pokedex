@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 
+import PokemonCard from '../components/PokemonCard';
 import { listPokemons } from '../services/pokeapi';
 import type { NamedAPIResource } from '../services/pokeAPI.type';
 
@@ -25,13 +26,11 @@ export default function HomeScreen() {
 				<Text style={[styles.name, styles.headerText]}>Pokemon</Text>
 			</View>
 			<FlatList
+				contentContainerStyle={styles.listContent}
 				data={pokemon}
 				keyExtractor={(item) => item.url}
 				renderItem={({ item }) => (
-					<View style={styles.row}>
-						<Text style={styles.index}>{idFromUrl(item.url)}</Text>
-						<Text style={styles.name}>{item.name}</Text>
-					</View>
+					<PokemonCard id={idFromUrl(item.url)} name={item.name} />
 				)}
 			/>
 		</View>
@@ -45,9 +44,9 @@ const styles = StyleSheet.create({
 	header: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		paddingHorizontal: 16,
+		paddingHorizontal: 24,
 		paddingVertical: 10,
-		gap: 12,
+		gap: 22,
 		backgroundColor: 'black',
 		borderBottomWidth: StyleSheet.hairlineWidth,
 		borderBottomColor: 'grey',
@@ -56,12 +55,9 @@ const styles = StyleSheet.create({
 		fontWeight: '700',
 		textTransform: 'none',
 	},
-	row: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		paddingHorizontal: 16,
-		paddingVertical: 10,
-		gap: 12,
+	listContent: {
+		gap: 8,
+		padding: 16,
 	},
 	index: {
 		width: 56,
