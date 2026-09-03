@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: pokedex-backend
+  profiles:
+    default: dev
+
+server:
+  port: ${PORT:8080}
