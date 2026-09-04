@@ -28,6 +28,7 @@ services:
       DATABASE_URL: jdbc:postgresql://postgres:5432/${DATABASE_NAME:-pokedex}
       DATABASE_USERNAME: ${DATABASE_USERNAME:-pokedex}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-pokedex}
+      POKEDEX_POKEAPI_BASE_URL: ${POKEDEX_POKEAPI_BASE_URL:-https://pokeapi.co/api/v2}
       PORT: ${PORT:-8080}
     ports:
       - "${PORT:-8080}:8080"
