@@ -1,18 +1,29 @@
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { displayName } from '../services/pokemonVariants';
+import FavoriteButton from './FavoriteButton';
 import { typeTheme } from './pokemonTypes';
 import { TypeBadgeList } from './TypeBadge';
 
 type PokemonCardProps = {
+	favorited: boolean;
 	imageUrl?: string;
 	id: number;
 	name: string;
 	onPress: () => void;
+	onToggleFavorite: () => void;
 	types: string[];
 };
 
-export default function PokemonCard({ imageUrl, id, name, onPress, types }: PokemonCardProps) {
+export default function PokemonCard({
+	favorited,
+	imageUrl,
+	id,
+	name,
+	onPress,
+	onToggleFavorite,
+	types,
+}: PokemonCardProps) {
 	const primaryType = typeTheme(types[0] ?? 'normal');
 
 	return (
@@ -32,6 +43,7 @@ export default function PokemonCard({ imageUrl, id, name, onPress, types }: Poke
 				<Text style={styles.name}>{displayName(name)}</Text>
 				<TypeBadgeList types={types} />
 			</View>
+			<FavoriteButton onToggle={onToggleFavorite} selected={favorited} />
 		</Pressable>
 	);
 }

@@ -1,5 +1,6 @@
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import FavoriteButton from '../components/FavoriteButton';
 import { typeTheme } from '../components/pokemonTypes';
 import { TypeBadgeList } from '../components/TypeBadge';
 import type { Pokemon } from '../services/pokeAPI.type';
@@ -7,8 +8,10 @@ import { displayArtwork, displayName, variantsForPokemon } from '../services/pok
 
 type PokemonDetailsScreenProps = {
 	allPokemon: Pokemon[];
+	isFavorite: boolean;
 	onBack: () => void;
 	onSelectPokemon: (pokemon: Pokemon) => void;
+	onToggleFavorite: () => void;
 	pokemon: Pokemon;
 };
 
@@ -24,8 +27,10 @@ const STAT_LABELS = [
 
 export default function PokemonDetailsScreen({
 	allPokemon,
+	isFavorite,
 	onBack,
 	onSelectPokemon,
+	onToggleFavorite,
 	pokemon,
 }: PokemonDetailsScreenProps) {
 	const imageUrl = displayArtwork(pokemon);
@@ -35,9 +40,12 @@ export default function PokemonDetailsScreen({
 
 	return (
 		<ScrollView contentContainerStyle={styles.container}>
-			<Pressable onPress={onBack} style={styles.backButton}>
-				<Text style={styles.backButtonText}>Back</Text>
-			</Pressable>
+			<View style={styles.topBar}>
+				<Pressable onPress={onBack} style={styles.backButton}>
+					<Text style={styles.backButtonText}>Back</Text>
+				</Pressable>
+				<FavoriteButton onToggle={onToggleFavorite} selected={isFavorite} />
+			</View>
 
 			<View style={[styles.hero, { borderColor: primaryType.background }]}>
 				{imageUrl ? <Image source={{ uri: imageUrl }} style={styles.image} /> : null}
@@ -164,6 +172,11 @@ const styles = StyleSheet.create({
 		gap: 16,
 		padding: 16,
 		backgroundColor: 'black',
+	},
+	topBar: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
 	},
 	backButton: {
 		alignSelf: 'flex-start',
