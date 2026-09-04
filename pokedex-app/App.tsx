@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import HomeScreen from './src/screens/HomeScreen';
@@ -13,19 +13,20 @@ export default function App() {
 	return (
 		<SafeAreaProvider>
 			<SafeAreaView style={styles.safeArea}>
+				<HomeScreen
+					onPokemonLoaded={setAllPokemon}
+					onSelectPokemon={setSelectedPokemon}
+				/>
 				{selectedPokemon ? (
-					<PokemonDetailsScreen
-						allPokemon={allPokemon}
-						onBack={() => setSelectedPokemon(null)}
-						onSelectPokemon={setSelectedPokemon}
-						pokemon={selectedPokemon}
-					/>
-				) : (
-					<HomeScreen
-						onPokemonLoaded={setAllPokemon}
-						onSelectPokemon={setSelectedPokemon}
-					/>
-				)}
+					<View style={styles.detailsOverlay}>
+						<PokemonDetailsScreen
+							allPokemon={allPokemon}
+							onBack={() => setSelectedPokemon(null)}
+							onSelectPokemon={setSelectedPokemon}
+							pokemon={selectedPokemon}
+						/>
+					</View>
+				) : null}
 			</SafeAreaView>
 		</SafeAreaProvider>
 	);
@@ -34,6 +35,10 @@ export default function App() {
 const styles = StyleSheet.create({
 	safeArea: {
 		flex: 1,
+		backgroundColor: 'black',
+	},
+	detailsOverlay: {
+		...StyleSheet.absoluteFillObject,
 		backgroundColor: 'black',
 	},
 });

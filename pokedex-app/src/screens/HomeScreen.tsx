@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 
-import PokemonCard from '../components/PokemonCard';
+import PokemonCard, { PokemonCardSkeleton } from '../components/PokemonCard';
 import { listPokemons, refreshPokemons } from '../services/pokeapi';
 import type { Pokemon } from '../services/pokeAPI.type';
-import { displayablePokemon } from '../services/pokemonVariants';
+import { displayablePokemon, displayArtwork } from '../services/pokemonVariants';
 
 type HomeScreenProps = {
 	onPokemonLoaded: (pokemon: Pokemon[]) => void;
@@ -60,7 +60,13 @@ export default function HomeScreen({ onPokemonLoaded, onSelectPokemon }: HomeScr
 				<Text style={[styles.name, styles.headerText]}>Pokemon</Text>
 				{refreshing ? <ActivityIndicator color="white" size="small" /> : null}
 			</View>
-			{loading ? <Text style={styles.statusText}>Loading Pokemon...</Text> : null}
+			{loading ? (
+				<View style={styles.skeletonList}>
+					{Array.from({ length: 6 }).map((_, index) => (
+						<PokemonCardSkeleton key={index} />
+					))}
+				</View>
+			) : null}
 			{error ? <Text style={styles.errorText}>{error}</Text> : null}
 			<FlatList
 				contentContainerStyle={styles.listContent}
@@ -70,9 +76,11 @@ export default function HomeScreen({ onPokemonLoaded, onSelectPokemon }: HomeScr
 				refreshing={refreshing}
 				renderItem={({ item }) => (
 					<PokemonCard
+						imageUrl={displayArtwork(item)}
 						id={item.nationalDexId}
 						name={item.name}
 						onPress={() => onSelectPokemon(item)}
+						types={item.types}
 					/>
 				)}
 			/>
@@ -102,9 +110,9 @@ const styles = StyleSheet.create({
 		gap: 8,
 		padding: 16,
 	},
-	statusText: {
+	skeletonList: {
+		gap: 8,
 		padding: 16,
-		color: 'white',
 	},
 	errorText: {
 		padding: 16,
