@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 
-import PokemonCard from '../components/PokemonCard';
+import PokemonCard, { PokemonCardSkeleton } from '../components/PokemonCard';
 import { listPokemons, refreshPokemons } from '../services/pokeapi';
 import type { Pokemon } from '../services/pokeAPI.type';
+import { displayablePokemon, displayArtwork } from '../services/pokemonVariants';
 
-export default function HomeScreen() {
+type HomeScreenProps = {
+	onPokemonLoaded: (pokemon: Pokemon[]) => void;
+	onSelectPokemon: (pokemon: Pokemon) => void;
+};
+
+export default function HomeScreen({ onPokemonLoaded, onSelectPokemon }: HomeScreenProps) {
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [pokemon, setPokemon] = useState<Pokemon[]>([]);
@@ -14,7 +20,8 @@ export default function HomeScreen() {
 	const loadPokemons = useCallback(() => {
 		listPokemons()
 			.then((results) => {
-				setPokemon(results);
+				onPokemonLoaded(results);
+				setPokemon(displayablePokemon(results));
 				setError(null);
 			})
 			.catch((fetchError: unknown) => {
@@ -23,7 +30,7 @@ export default function HomeScreen() {
 			.finally(() => {
 				setLoading(false);
 			});
-	}, []);
+	}, [onPokemonLoaded]);
 
 	useEffect(() => {
 		loadPokemons();
@@ -34,7 +41,8 @@ export default function HomeScreen() {
 		refreshPokemons()
 			.then(() => listPokemons())
 			.then((results) => {
-				setPokemon(results);
+				onPokemonLoaded(results);
+				setPokemon(displayablePokemon(results));
 				setError(null);
 			})
 			.catch((refreshError: unknown) => {
@@ -43,7 +51,7 @@ export default function HomeScreen() {
 			.finally(() => {
 				setRefreshing(false);
 			});
-	}, []);
+	}, [onPokemonLoaded]);
 
 	return (
 		<View style={styles.container}>
@@ -52,7 +60,13 @@ export default function HomeScreen() {
 				<Text style={[styles.name, styles.headerText]}>Pokemon</Text>
 				{refreshing ? <ActivityIndicator color="white" size="small" /> : null}
 			</View>
-			{loading ? <Text style={styles.statusText}>Loading Pokemon...</Text> : null}
+			{loading ? (
+				<View style={styles.skeletonList}>
+					{Array.from({ length: 6 }).map((_, index) => (
+						<PokemonCardSkeleton key={index} />
+					))}
+				</View>
+			) : null}
 			{error ? <Text style={styles.errorText}>{error}</Text> : null}
 			<FlatList
 				contentContainerStyle={styles.listContent}
@@ -61,7 +75,13 @@ export default function HomeScreen() {
 				onRefresh={handleRefresh}
 				refreshing={refreshing}
 				renderItem={({ item }) => (
-					<PokemonCard id={item.nationalDexId} name={item.name} />
+					<PokemonCard
+						imageUrl={displayArtwork(item)}
+						id={item.nationalDexId}
+						name={item.name}
+						onPress={() => onSelectPokemon(item)}
+						types={item.types}
+					/>
 				)}
 			/>
 		</View>
@@ -90,9 +110,9 @@ const styles = StyleSheet.create({
 		gap: 8,
 		padding: 16,
 	},
-	statusText: {
+	skeletonList: {
+		gap: 8,
 		padding: 16,
-		color: 'white',
 	},
 	errorText: {
 		padding: 16,
