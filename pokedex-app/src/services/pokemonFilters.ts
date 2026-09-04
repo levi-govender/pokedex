@@ -24,6 +24,20 @@ export const SORT_OPTIONS: { id: SortOption; label: string }[] = [
 
 export const DEFAULT_SORT: SortOption = 'dex-asc';
 
+export function formatGeneration(generation: string | null) {
+	if (!generation) {
+		return 'Unknown generation';
+	}
+
+	const match = GENERATIONS.find((item) => item.id === generation.toLowerCase());
+
+	if (match) {
+		return match.label;
+	}
+
+	return generation.replace(/-/g, ' ');
+}
+
 export function toggleValue(values: string[], value: string) {
 	return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
 }

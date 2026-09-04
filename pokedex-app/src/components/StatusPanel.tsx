@@ -1,15 +1,31 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+type StatusKind = 'error' | 'favorites' | 'offline' | 'search' | 'empty';
+
 type StatusPanelProps = {
 	actionLabel?: string;
+	kind?: StatusKind;
 	message: string;
 	onAction?: () => void;
 	title: string;
 };
 
-export default function StatusPanel({ actionLabel, message, onAction, title }: StatusPanelProps) {
+const ILLUSTRATIONS: Record<StatusKind, { glyph: string; label: string }> = {
+	empty: { glyph: '○', label: 'Empty Pokedex illustration' },
+	error: { glyph: '⚠', label: 'Error illustration' },
+	favorites: { glyph: '☆', label: 'No favorites illustration' },
+	offline: { glyph: '☁', label: 'Offline illustration' },
+	search: { glyph: '⌕', label: 'Empty search illustration' },
+};
+
+export default function StatusPanel({ actionLabel, kind = 'empty', message, onAction, title }: StatusPanelProps) {
+	const illustration = ILLUSTRATIONS[kind];
+
 	return (
 		<View accessibilityRole="text" style={styles.panel}>
+			<View accessibilityLabel={illustration.label} style={styles.illustration}>
+				<Text style={styles.glyph}>{illustration.glyph}</Text>
+			</View>
 			<Text style={styles.title}>{title}</Text>
 			<Text style={styles.message}>{message}</Text>
 			{onAction && actionLabel ? (
@@ -36,6 +52,22 @@ const styles = StyleSheet.create({
 		borderRadius: 16,
 		borderWidth: StyleSheet.hairlineWidth,
 		borderColor: '#333',
+	},
+	illustration: {
+		alignItems: 'center',
+		justifyContent: 'center',
+		width: 72,
+		height: 72,
+		marginBottom: 4,
+		backgroundColor: '#262626',
+		borderRadius: 36,
+		borderWidth: 1,
+		borderColor: '#404040',
+	},
+	glyph: {
+		color: '#FAFAFA',
+		fontSize: 32,
+		fontWeight: '800',
 	},
 	title: {
 		color: 'white',

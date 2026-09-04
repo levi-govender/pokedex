@@ -149,6 +149,8 @@ export default function HomeScreen({
 			});
 	}, [applyCatalog]);
 
+	const emptyKind = dashboardTab === 'favourites' ? 'favorites' : appliedQuery || hasActiveFilters ? 'search' : 'empty';
+	const errorKind = error?.title === 'Backend unavailable' ? 'offline' : 'error';
 	const emptyTitle = dashboardTab === 'favourites' ? 'No favorites yet' : appliedQuery || hasActiveFilters ? 'No matches' : 'No Pokemon';
 	const emptyMessage =
 		dashboardTab === 'favourites'
@@ -161,6 +163,8 @@ export default function HomeScreen({
 		<View style={styles.container}>
 			<PokedexDashboard
 				activeTab={dashboardTab}
+				catalogCount={pokemon.length}
+				loading={loading}
 				onChangeTab={setDashboardTab}
 				onClearSearch={() => {
 					setSearchValue('');
@@ -201,17 +205,19 @@ export default function HomeScreen({
 			) : error && pokemon.length === 0 ? (
 				<StatusPanel
 					actionLabel="Retry"
+					kind={errorKind}
 					message={error.message}
 					onAction={() => loadPokemons(true)}
 					title={error.title}
 				/>
 			) : (
 				<FlatList
-					ListEmptyComponent={<StatusPanel message={emptyMessage} title={emptyTitle} />}
+					ListEmptyComponent={<StatusPanel kind={emptyKind} message={emptyMessage} title={emptyTitle} />}
 					ListHeaderComponent={
 						error ? (
 							<StatusPanel
 								actionLabel="Retry"
+								kind={errorKind}
 								message={error.message}
 								onAction={() => loadPokemons(true)}
 								title={error.title}
