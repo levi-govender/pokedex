@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 
+import ActiveFiltersBar from '../components/ActiveFiltersBar';
+import PokedexDashboard, { type DashboardTab } from '../components/PokedexDashboard';
 import PokemonCard, { PokemonCardSkeleton } from '../components/PokemonCard';
-import { POKEMON_TYPES } from '../components/pokemonTypes';
-import TypeBadge from '../components/TypeBadge';
+import PokemonFilterPanel from '../components/PokemonFilterPanel';
 import { listPokemons, refreshPokemons } from '../services/pokeapi';
 import type { Pokemon } from '../services/pokeAPI.type';
+import {
+	applyPokemonFilters,
+	DEFAULT_SORT,
+	type SortOption,
+	toggleValue,
+} from '../services/pokemonFilters';
+import { matchesPokemonSearch } from '../services/pokemonSearch';
 import { displayablePokemon, displayArtwork } from '../services/pokemonVariants';
 
 type HomeScreenProps = {
@@ -18,15 +26,39 @@ export default function HomeScreen({ onPokemonLoaded, onSelectPokemon }: HomeScr
 	const [loading, setLoading] = useState(true);
 	const [pokemon, setPokemon] = useState<Pokemon[]>([]);
 	const [refreshing, setRefreshing] = useState(false);
-	const [selectedType, setSelectedType] = useState<string | null>(null);
+	const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+	const [selectedGenerations, setSelectedGenerations] = useState<string[]>([]);
+	const [sort, setSort] = useState<SortOption>(DEFAULT_SORT);
+	const [dashboardTab, setDashboardTab] = useState<DashboardTab | null>(null);
+	const [searchValue, setSearchValue] = useState('');
+	const [appliedQuery, setAppliedQuery] = useState('');
+
+	useEffect(() => {
+		const timeoutId = setTimeout(() => {
+			setAppliedQuery(searchValue.trim());
+		}, 300);
+
+		return () => clearTimeout(timeoutId);
+	}, [searchValue]);
+
+	const hasActiveFilters =
+		selectedTypes.length > 0 || selectedGenerations.length > 0 || sort !== DEFAULT_SORT;
 
 	const visiblePokemon = useMemo(() => {
-		if (!selectedType) {
-			return pokemon;
-		}
+		const filtered = applyPokemonFilters(pokemon, {
+			generations: selectedGenerations,
+			sort,
+			types: selectedTypes,
+		});
 
-		return pokemon.filter((item) => item.types.includes(selectedType));
-	}, [pokemon, selectedType]);
+		return filtered.filter((item) => matchesPokemonSearch(item, appliedQuery));
+	}, [appliedQuery, pokemon, selectedGenerations, selectedTypes, sort]);
+
+	const clearFilters = useCallback(() => {
+		setSelectedTypes([]);
+		setSelectedGenerations([]);
+		setSort(DEFAULT_SORT);
+	}, []);
 
 	const loadPokemons = useCallback(() => {
 		listPokemons()
@@ -66,11 +98,39 @@ export default function HomeScreen({ onPokemonLoaded, onSelectPokemon }: HomeScr
 
 	return (
 		<View style={styles.container}>
-			<View style={styles.header}>
-				<Text style={[styles.index, styles.headerText]}>ID</Text>
-				<Text style={[styles.name, styles.headerText]}>Pokemon</Text>
-				{refreshing ? <ActivityIndicator color="white" size="small" /> : null}
-			</View>
+			<PokedexDashboard
+				activeTab={dashboardTab}
+				onChangeTab={setDashboardTab}
+				onClearSearch={() => {
+					setSearchValue('');
+					setAppliedQuery('');
+				}}
+				onSearchChange={setSearchValue}
+				onSubmitSearch={() => setAppliedQuery(searchValue.trim())}
+				searchValue={searchValue}
+			/>
+			{dashboardTab === 'filter' ? (
+				<PokemonFilterPanel
+					generations={selectedGenerations}
+					onChangeSort={setSort}
+					onToggleGeneration={(generation) => setSelectedGenerations((current) => toggleValue(current, generation))}
+					onToggleType={(type) => setSelectedTypes((current) => toggleValue(current, type))}
+					sort={sort}
+					types={selectedTypes}
+				/>
+			) : null}
+			<ActiveFiltersBar
+				generations={selectedGenerations}
+				hasActiveFilters={hasActiveFilters}
+				onClear={clearFilters}
+				onRemoveGeneration={(generation) =>
+					setSelectedGenerations((current) => current.filter((item) => item !== generation))
+				}
+				onRemoveType={(type) => setSelectedTypes((current) => current.filter((item) => item !== type))}
+				onResetSort={() => setSort(DEFAULT_SORT)}
+				sort={sort}
+				types={selectedTypes}
+			/>
 			{loading ? (
 				<View style={styles.skeletonList}>
 					{Array.from({ length: 6 }).map((_, index) => (
@@ -79,43 +139,35 @@ export default function HomeScreen({ onPokemonLoaded, onSelectPokemon }: HomeScr
 				</View>
 			) : null}
 			{error ? <Text style={styles.errorText}>{error}</Text> : null}
-			<ScrollView
-				contentContainerStyle={styles.filterContent}
-				horizontal
-				showsHorizontalScrollIndicator={false}
-				style={styles.filterBar}
-			>
-				<TypeBadge
-					label="All"
-					onPress={() => setSelectedType(null)}
-					selected={selectedType === null}
-					type="all"
+			{dashboardTab === 'favourites' ? (
+				<Text style={styles.placeholderText}>Favourites are not available yet.</Text>
+			) : (
+				<FlatList
+					ListEmptyComponent={
+						loading ? null : (
+							<Text style={styles.emptyText}>
+								{appliedQuery || hasActiveFilters
+									? 'No Pokemon match the current search and filters.'
+									: 'No Pokemon to display.'}
+							</Text>
+						)
+					}
+					contentContainerStyle={styles.listContent}
+					data={visiblePokemon}
+					keyExtractor={(item) => String(item.id)}
+					onRefresh={handleRefresh}
+					refreshing={refreshing}
+					renderItem={({ item }) => (
+						<PokemonCard
+							imageUrl={displayArtwork(item)}
+							id={item.nationalDexId}
+							name={item.name}
+							onPress={() => onSelectPokemon(item)}
+							types={item.types}
+						/>
+					)}
 				/>
-				{POKEMON_TYPES.map((type) => (
-					<TypeBadge
-						key={type}
-						onPress={() => setSelectedType((current) => (current === type ? null : type))}
-						selected={selectedType === type}
-						type={type}
-					/>
-				))}
-			</ScrollView>
-			<FlatList
-				contentContainerStyle={styles.listContent}
-				data={visiblePokemon}
-				keyExtractor={(item) => String(item.id)}
-				onRefresh={handleRefresh}
-				refreshing={refreshing}
-				renderItem={({ item }) => (
-					<PokemonCard
-						imageUrl={displayArtwork(item)}
-						id={item.nationalDexId}
-						name={item.name}
-						onPress={() => onSelectPokemon(item)}
-						types={item.types}
-					/>
-				)}
-			/>
+			)}
 		</View>
 	);
 }
@@ -124,35 +176,9 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 	},
-	header: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		paddingHorizontal: 24,
-		paddingVertical: 10,
-		gap: 22,
-		backgroundColor: 'black',
-		borderBottomWidth: StyleSheet.hairlineWidth,
-		borderBottomColor: 'grey',
-	},
-	headerText: {
-		fontWeight: '700',
-		textTransform: 'none',
-	},
 	listContent: {
 		gap: 8,
 		padding: 16,
-	},
-	filterBar: {
-		flexGrow: 0,
-		minHeight: 56,
-		borderBottomWidth: StyleSheet.hairlineWidth,
-		borderBottomColor: '#262626',
-	},
-	filterContent: {
-		gap: 8,
-		paddingHorizontal: 16,
-		paddingVertical: 12,
-		alignItems: 'center',
 	},
 	skeletonList: {
 		gap: 8,
@@ -162,14 +188,14 @@ const styles = StyleSheet.create({
 		padding: 16,
 		color: '#f87171',
 	},
-	index: {
-		width: 56,
-		fontVariant: ['tabular-nums'],
-		color: 'white',
+	emptyText: {
+		paddingVertical: 32,
+		color: '#A3A3A3',
+		textAlign: 'center',
 	},
-	name: {
-		flex: 1,
-		textTransform: 'capitalize',
-		color: 'white',
+	placeholderText: {
+		padding: 16,
+		color: '#A3A3A3',
+		textAlign: 'center',
 	},
 });
