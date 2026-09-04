@@ -1,16 +1,17 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 
 type PokemonCardProps = {
 	id: number;
 	name: string;
+	onPress: () => void;
 };
 
-export default function PokemonCard({ id, name }: PokemonCardProps) {
+export default function PokemonCard({ id, name, onPress }: PokemonCardProps) {
 	return (
-		<View style={styles.card}>
+		<Pressable onPress={onPress} style={styles.card}>
 			<Text style={styles.id}>{id}</Text>
 			<Text style={styles.name}>{name}</Text>
-		</View>
+		</Pressable>
 	);
 }
 

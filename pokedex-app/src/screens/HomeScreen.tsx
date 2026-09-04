@@ -5,7 +5,11 @@ import PokemonCard from '../components/PokemonCard';
 import { listPokemons, refreshPokemons } from '../services/pokeapi';
 import type { Pokemon } from '../services/pokeAPI.type';
 
-export default function HomeScreen() {
+type HomeScreenProps = {
+	onSelectPokemon: (pokemon: Pokemon) => void;
+};
+
+export default function HomeScreen({ onSelectPokemon }: HomeScreenProps) {
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [pokemon, setPokemon] = useState<Pokemon[]>([]);
@@ -61,7 +65,11 @@ export default function HomeScreen() {
 				onRefresh={handleRefresh}
 				refreshing={refreshing}
 				renderItem={({ item }) => (
-					<PokemonCard id={item.nationalDexId} name={item.name} />
+					<PokemonCard
+						id={item.nationalDexId}
+						name={item.name}
+						onPress={() => onSelectPokemon(item)}
+					/>
 				)}
 			/>
 		</View>
