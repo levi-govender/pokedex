@@ -1,6 +1,6 @@
 package com.pokedex.backend.pokemon;
 
-import java.util.Map;
+import java.time.Instant;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -61,9 +61,16 @@ public class PokemonController {
 	}
 
 	@PostMapping("/sync")
-	public Map<String, Integer> syncPokemons(
-			@RequestParam(required = false) @Min(1) @Max(2000) Integer limit) {
-		return Map.of("synced", pokemonService.syncPokemons(limit));
+	public PokemonSyncResponse syncPokemons(
+			@RequestParam(required = false) @Min(1) @Max(2000) Integer limit,
+			@RequestParam(defaultValue = "false") Boolean force) {
+		return pokemonService.syncPokemons(limit, Boolean.TRUE.equals(force));
+	}
+
+	@GetMapping("/sync/status")
+	public PokemonSyncResponse syncStatus() {
+		Instant lastSynchronizedAt = pokemonService.lastSynchronizedAt();
+		return new PokemonSyncResponse(0, true, lastSynchronizedAt);
 	}
 
 	private Pageable pageable(int page, int size) {

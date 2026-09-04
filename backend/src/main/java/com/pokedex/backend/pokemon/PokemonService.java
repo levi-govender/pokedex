@@ -1,5 +1,6 @@
 package com.pokedex.backend.pokemon;
 
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,14 +21,19 @@ import org.springframework.web.client.RestClient;
 @Service
 public class PokemonService {
 
+	private static final String LAST_SYNCHRONIZED_AT_KEY = "pokemon.last_synchronized_at";
+
+	private final AppMetadataRepository appMetadataRepository;
 	private final PokemonRepository pokemonRepository;
 	private final RestClient pokeApiClient;
 	private final int syncLimit;
 
 	public PokemonService(
+			AppMetadataRepository appMetadataRepository,
 			PokemonRepository pokemonRepository,
 			@Value("${pokedex.pokeapi.base-url:https://pokeapi.co/api/v2}") String pokeApiBaseUrl,
 			@Value("${pokedex.pokeapi.sync-limit:2000}") int syncLimit) {
+		this.appMetadataRepository = appMetadataRepository;
 		this.pokemonRepository = pokemonRepository;
 		this.pokeApiClient = RestClient.builder().baseUrl(pokeApiBaseUrl).build();
 		this.syncLimit = syncLimit;
@@ -59,7 +65,19 @@ public class PokemonService {
 				.orElseThrow(() -> new PokemonNotFoundException(id));
 	}
 
-	public int syncPokemons(Integer requestedLimit) {
+	@Transactional(readOnly = true)
+	public Instant lastSynchronizedAt() {
+		return appMetadataRepository.findById(LAST_SYNCHRONIZED_AT_KEY)
+				.map(AppMetadata::getValue)
+				.map(Instant::parse)
+				.orElse(null);
+	}
+
+	public PokemonSyncResponse syncPokemons(Integer requestedLimit, boolean force) {
+		if (!force && pokemonRepository.count() > 0) {
+			return new PokemonSyncResponse(0, true, ensureLastSynchronizedAt());
+		}
+
 		int limit = requestedLimit == null ? syncLimit : requestedLimit;
 		NamedApiResourceList list = pokeApiClient.get()
 				.uri("/pokemon?limit={limit}", limit)
@@ -67,11 +85,15 @@ public class PokemonService {
 				.body(NamedApiResourceList.class);
 
 		if (list == null) {
-			return 0;
+			return new PokemonSyncResponse(0, false, lastSynchronizedAt());
 		}
 
 		list.results().forEach(this::syncPokemon);
-		return list.results().size();
+
+		Instant synchronizedAt = Instant.now();
+		saveLastSynchronizedAt(synchronizedAt);
+
+		return new PokemonSyncResponse(list.results().size(), false, synchronizedAt);
 	}
 
 	private void syncPokemon(NamedApiResource resource) {
@@ -135,6 +157,24 @@ public class PokemonService {
 		if (Objects.nonNull(url) && !url.isBlank()) {
 			urls.put(key, url);
 		}
+	}
+
+	private void saveLastSynchronizedAt(Instant synchronizedAt) {
+		AppMetadata metadata = appMetadataRepository.findById(LAST_SYNCHRONIZED_AT_KEY)
+				.orElseGet(() -> new AppMetadata(LAST_SYNCHRONIZED_AT_KEY, synchronizedAt.toString()));
+		metadata.setValue(synchronizedAt.toString());
+		appMetadataRepository.save(metadata);
+	}
+
+	private Instant ensureLastSynchronizedAt() {
+		Instant lastSynchronizedAt = lastSynchronizedAt();
+		if (lastSynchronizedAt != null) {
+			return lastSynchronizedAt;
+		}
+
+		Instant initializedAt = Instant.now();
+		saveLastSynchronizedAt(initializedAt);
+		return initializedAt;
 	}
 
 	private org.springframework.data.domain.Sort defaultSort() {
