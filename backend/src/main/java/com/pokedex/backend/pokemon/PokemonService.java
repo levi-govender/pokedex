@@ -5,7 +5,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
+
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
@@ -28,10 +35,28 @@ public class PokemonService {
 
 	@Transactional(readOnly = true)
 	public List<PokemonResponse> listPokemons() {
-		return pokemonRepository.findAllByOrderByNationalDexIdAscPokeapiIdAsc()
+		return pokemonRepository.findAll(defaultSort())
 				.stream()
 				.map(PokemonResponse::from)
 				.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public Page<PokemonResponse> listPokemons(
+			String name,
+			String type,
+			String generation,
+			Boolean defaultVariant,
+			Pageable pageable) {
+		return pokemonRepository.findAll(filters(name, type, generation, defaultVariant), pageable)
+				.map(PokemonResponse::from);
+	}
+
+	@Transactional(readOnly = true)
+	public PokemonResponse findPokemonById(Long id) {
+		return pokemonRepository.findById(id)
+				.map(PokemonResponse::from)
+				.orElseThrow(() -> new PokemonNotFoundException(id));
 	}
 
 	public int syncPokemons(Integer requestedLimit) {
@@ -110,5 +135,44 @@ public class PokemonService {
 		if (Objects.nonNull(url) && !url.isBlank()) {
 			urls.put(key, url);
 		}
+	}
+
+	private org.springframework.data.domain.Sort defaultSort() {
+		return org.springframework.data.domain.Sort.by("nationalDexId").ascending()
+				.and(org.springframework.data.domain.Sort.by("pokeapiId").ascending());
+	}
+
+	private Specification<Pokemon> filters(String name, String type, String generation, Boolean defaultVariant) {
+		return (root, query, criteriaBuilder) -> {
+			Predicate predicate = criteriaBuilder.conjunction();
+
+			if (name != null && !name.isBlank()) {
+				predicate = criteriaBuilder.and(
+						predicate,
+						criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), "%" + name.toLowerCase() + "%"));
+			}
+
+			if (generation != null && !generation.isBlank()) {
+				predicate = criteriaBuilder.and(
+						predicate,
+						criteriaBuilder.equal(criteriaBuilder.lower(root.get("generation")), generation.toLowerCase()));
+			}
+
+			if (defaultVariant != null) {
+				predicate = criteriaBuilder.and(
+						predicate,
+						criteriaBuilder.equal(root.get("defaultVariant"), defaultVariant));
+			}
+
+			if (type != null && !type.isBlank()) {
+				Join<Pokemon, String> types = root.join("types", JoinType.INNER);
+				predicate = criteriaBuilder.and(
+						predicate,
+						criteriaBuilder.equal(criteriaBuilder.lower(types), type.toLowerCase()));
+				query.distinct(true);
+			}
+
+			return predicate;
+		};
 	}
 }
