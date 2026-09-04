@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import PokemonCard, { PokemonCardSkeleton } from '../components/PokemonCard';
+import { POKEMON_TYPES } from '../components/pokemonTypes';
+import TypeBadge from '../components/TypeBadge';
 import { listPokemons, refreshPokemons } from '../services/pokeapi';
 import type { Pokemon } from '../services/pokeAPI.type';
 import { displayablePokemon, displayArtwork } from '../services/pokemonVariants';
@@ -16,6 +18,15 @@ export default function HomeScreen({ onPokemonLoaded, onSelectPokemon }: HomeScr
 	const [loading, setLoading] = useState(true);
 	const [pokemon, setPokemon] = useState<Pokemon[]>([]);
 	const [refreshing, setRefreshing] = useState(false);
+	const [selectedType, setSelectedType] = useState<string | null>(null);
+
+	const visiblePokemon = useMemo(() => {
+		if (!selectedType) {
+			return pokemon;
+		}
+
+		return pokemon.filter((item) => item.types.includes(selectedType));
+	}, [pokemon, selectedType]);
 
 	const loadPokemons = useCallback(() => {
 		listPokemons()
@@ -68,9 +79,30 @@ export default function HomeScreen({ onPokemonLoaded, onSelectPokemon }: HomeScr
 				</View>
 			) : null}
 			{error ? <Text style={styles.errorText}>{error}</Text> : null}
+			<ScrollView
+				contentContainerStyle={styles.filterContent}
+				horizontal
+				showsHorizontalScrollIndicator={false}
+				style={styles.filterBar}
+			>
+				<TypeBadge
+					label="All"
+					onPress={() => setSelectedType(null)}
+					selected={selectedType === null}
+					type="all"
+				/>
+				{POKEMON_TYPES.map((type) => (
+					<TypeBadge
+						key={type}
+						onPress={() => setSelectedType((current) => (current === type ? null : type))}
+						selected={selectedType === type}
+						type={type}
+					/>
+				))}
+			</ScrollView>
 			<FlatList
 				contentContainerStyle={styles.listContent}
-				data={pokemon}
+				data={visiblePokemon}
 				keyExtractor={(item) => String(item.id)}
 				onRefresh={handleRefresh}
 				refreshing={refreshing}
@@ -109,6 +141,18 @@ const styles = StyleSheet.create({
 	listContent: {
 		gap: 8,
 		padding: 16,
+	},
+	filterBar: {
+		flexGrow: 0,
+		minHeight: 56,
+		borderBottomWidth: StyleSheet.hairlineWidth,
+		borderBottomColor: '#262626',
+	},
+	filterContent: {
+		gap: 8,
+		paddingHorizontal: 16,
+		paddingVertical: 12,
+		alignItems: 'center',
 	},
 	skeletonList: {
 		gap: 8,

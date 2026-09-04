@@ -1,5 +1,7 @@
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { typeTheme } from '../components/pokemonTypes';
+import { TypeBadgeList } from '../components/TypeBadge';
 import type { Pokemon } from '../services/pokeAPI.type';
 import { displayArtwork, displayName, variantsForPokemon } from '../services/pokemonVariants';
 
@@ -27,6 +29,7 @@ export default function PokemonDetailsScreen({
 	pokemon,
 }: PokemonDetailsScreenProps) {
 	const imageUrl = displayArtwork(pokemon);
+	const primaryType = typeTheme(pokemon.types[0] ?? 'normal');
 	const baseStatTotal = STAT_LABELS.reduce((total, stat) => total + (pokemon.stats[stat.key] ?? 0), 0);
 	const variants = variantsForPokemon(allPokemon, pokemon);
 
@@ -36,10 +39,11 @@ export default function PokemonDetailsScreen({
 				<Text style={styles.backButtonText}>Back</Text>
 			</Pressable>
 
-			<View style={styles.hero}>
+			<View style={[styles.hero, { borderColor: primaryType.background }]}>
 				{imageUrl ? <Image source={{ uri: imageUrl }} style={styles.image} /> : null}
 				<Text style={styles.id}>#{pokemon.nationalDexId}</Text>
 				<Text style={styles.name}>{displayName(pokemon.name)}</Text>
+				<TypeBadgeList size="md" types={pokemon.types} />
 				<Text style={styles.generation}>{pokemon.generation ?? 'Unknown generation'}</Text>
 			</View>
 
@@ -69,7 +73,7 @@ export default function PokemonDetailsScreen({
 
 			<View style={styles.section}>
 				<Text style={styles.sectionTitle}>Types</Text>
-				<Text style={styles.value}>{pokemon.types.join(', ')}</Text>
+				<TypeBadgeList size="md" types={pokemon.types} />
 			</View>
 
 			<View style={styles.section}>
@@ -86,6 +90,7 @@ export default function PokemonDetailsScreen({
 				<Text style={styles.sectionTitle}>Stats</Text>
 				{STAT_LABELS.map((stat) => (
 					<StatBar
+						color={primaryType.background}
 						key={stat.key}
 						label={stat.label}
 						value={pokemon.stats[stat.key] ?? 0}
@@ -135,18 +140,19 @@ function DetailRow({ label, value }: DetailRowProps) {
 }
 
 type StatBarProps = {
+	color: string;
 	label: string;
 	value: number;
 };
 
-function StatBar({ label, value }: StatBarProps) {
-	const width = `${Math.min(value / MAX_BASE_STAT, 1) * 100}%`;
+function StatBar({ color, label, value }: StatBarProps) {
+	const width: `${number}%` = `${Math.min(value / MAX_BASE_STAT, 1) * 100}%`;
 
 	return (
 		<View style={styles.statRow}>
 			<Text style={styles.statLabel}>{label}</Text>
 			<View style={styles.statTrack}>
-				<View style={[styles.statFill, { width }]} />
+				<View style={[styles.statFill, { backgroundColor: color, width }]} />
 			</View>
 			<Text style={styles.statValue}>{value}</Text>
 		</View>
@@ -172,10 +178,11 @@ const styles = StyleSheet.create({
 	},
 	hero: {
 		alignItems: 'center',
+		gap: 8,
 		padding: 20,
 		backgroundColor: '#171717',
 		borderRadius: 16,
-		borderWidth: StyleSheet.hairlineWidth,
+		borderWidth: 2,
 		borderColor: '#333',
 	},
 	image: {
@@ -275,7 +282,6 @@ const styles = StyleSheet.create({
 	},
 	statFill: {
 		height: '100%',
-		backgroundColor: '#ef4444',
 		borderRadius: 999,
 	},
 	statValue: {

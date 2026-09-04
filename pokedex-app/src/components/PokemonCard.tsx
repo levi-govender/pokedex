@@ -1,6 +1,8 @@
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { displayName } from '../services/pokemonVariants';
+import { typeTheme } from './pokemonTypes';
+import { TypeBadgeList } from './TypeBadge';
 
 type PokemonCardProps = {
 	imageUrl?: string;
@@ -10,49 +12,25 @@ type PokemonCardProps = {
 	types: string[];
 };
 
-const TYPE_COLORS: Record<string, string> = {
-	bug: '#84cc16',
-	dark: '#57534e',
-	dragon: '#7c3aed',
-	electric: '#facc15',
-	fairy: '#f0abfc',
-	fighting: '#dc2626',
-	fire: '#f97316',
-	flying: '#38bdf8',
-	ghost: '#6366f1',
-	grass: '#22c55e',
-	ground: '#ca8a04',
-	ice: '#67e8f9',
-	normal: '#a8a29e',
-	poison: '#a855f7',
-	psychic: '#ec4899',
-	rock: '#a16207',
-	steel: '#94a3b8',
-	water: '#0ea5e9',
-};
-
 export default function PokemonCard({ imageUrl, id, name, onPress, types }: PokemonCardProps) {
+	const primaryType = typeTheme(types[0] ?? 'normal');
+
 	return (
 		<Pressable
+			accessibilityHint="Opens Pokemon details"
+			accessibilityLabel={`${displayName(name)}, Dex number ${id}, ${types.join(' and ')} type`}
+			accessibilityRole="button"
 			onPress={onPress}
 			style={({ pressed }) => [styles.card, pressed ? styles.pressedCard : null]}
 		>
-			<View style={styles.artworkFrame}>
+			<View style={[styles.typeAccent, { backgroundColor: primaryType.background }]} />
+			<View style={[styles.artworkFrame, { borderColor: primaryType.background }]}>
 				{imageUrl ? <Image source={{ uri: imageUrl }} style={styles.artwork} /> : null}
 			</View>
 			<View style={styles.content}>
 				<Text style={styles.id}>#{String(id).padStart(4, '0')}</Text>
 				<Text style={styles.name}>{displayName(name)}</Text>
-				<View style={styles.typeList}>
-					{types.map((type) => (
-						<View
-							key={type}
-							style={[styles.typeBadge, { backgroundColor: TYPE_COLORS[type] ?? '#525252' }]}
-						>
-							<Text style={styles.typeText}>{type}</Text>
-						</View>
-					))}
-				</View>
+				<TypeBadgeList types={types} />
 			</View>
 		</Pressable>
 	);
@@ -89,6 +67,14 @@ const styles = StyleSheet.create({
 		shadowOpacity: 0.22,
 		shadowRadius: 8,
 		elevation: 3,
+		overflow: 'hidden',
+	},
+	typeAccent: {
+		position: 'absolute',
+		left: 0,
+		top: 0,
+		bottom: 0,
+		width: 5,
 	},
 	pressedCard: {
 		opacity: 0.76,
@@ -101,6 +87,7 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		backgroundColor: '#262626',
 		borderRadius: 16,
+		borderWidth: 2,
 	},
 	artwork: {
 		width: 68,
@@ -123,22 +110,6 @@ const styles = StyleSheet.create({
 		fontSize: 20,
 		fontWeight: '800',
 		textTransform: 'capitalize',
-	},
-	typeList: {
-		flexDirection: 'row',
-		flexWrap: 'wrap',
-		gap: 6,
-	},
-	typeBadge: {
-		paddingHorizontal: 10,
-		paddingVertical: 4,
-		borderRadius: 999,
-	},
-	typeText: {
-		color: 'white',
-		fontSize: 11,
-		fontWeight: '800',
-		textTransform: 'uppercase',
 	},
 	skeletonCard: {
 		flexDirection: 'row',
