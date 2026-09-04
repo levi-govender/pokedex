@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import PokedexDashboard, { type DashboardTab } from '../components/PokedexDashboard';
 import PokemonCard, { PokemonCardSkeleton } from '../components/PokemonCard';
 import { POKEMON_TYPES } from '../components/pokemonTypes';
 import TypeBadge from '../components/TypeBadge';
 import { listPokemons, refreshPokemons } from '../services/pokeapi';
 import type { Pokemon } from '../services/pokeAPI.type';
+import { matchesPokemonSearch } from '../services/pokemonSearch';
 import { displayablePokemon, displayArtwork } from '../services/pokemonVariants';
 
 type HomeScreenProps = {
@@ -19,14 +21,27 @@ export default function HomeScreen({ onPokemonLoaded, onSelectPokemon }: HomeScr
 	const [pokemon, setPokemon] = useState<Pokemon[]>([]);
 	const [refreshing, setRefreshing] = useState(false);
 	const [selectedType, setSelectedType] = useState<string | null>(null);
+	const [dashboardTab, setDashboardTab] = useState<DashboardTab>('search');
+	const [searchValue, setSearchValue] = useState('');
+	const [appliedQuery, setAppliedQuery] = useState('');
+
+	useEffect(() => {
+		const timeoutId = setTimeout(() => {
+			setAppliedQuery(searchValue.trim());
+		}, 300);
+
+		return () => clearTimeout(timeoutId);
+	}, [searchValue]);
 
 	const visiblePokemon = useMemo(() => {
-		if (!selectedType) {
-			return pokemon;
-		}
+		return pokemon.filter((item) => {
+			if (selectedType && !item.types.includes(selectedType)) {
+				return false;
+			}
 
-		return pokemon.filter((item) => item.types.includes(selectedType));
-	}, [pokemon, selectedType]);
+			return matchesPokemonSearch(item, appliedQuery);
+		});
+	}, [appliedQuery, pokemon, selectedType]);
 
 	const loadPokemons = useCallback(() => {
 		listPokemons()
@@ -66,11 +81,17 @@ export default function HomeScreen({ onPokemonLoaded, onSelectPokemon }: HomeScr
 
 	return (
 		<View style={styles.container}>
-			<View style={styles.header}>
-				<Text style={[styles.index, styles.headerText]}>ID</Text>
-				<Text style={[styles.name, styles.headerText]}>Pokemon</Text>
-				{refreshing ? <ActivityIndicator color="white" size="small" /> : null}
-			</View>
+			<PokedexDashboard
+				activeTab={dashboardTab}
+				onChangeTab={setDashboardTab}
+				onClearSearch={() => {
+					setSearchValue('');
+					setAppliedQuery('');
+				}}
+				onSearchChange={setSearchValue}
+				onSubmitSearch={() => setAppliedQuery(searchValue.trim())}
+				searchValue={searchValue}
+			/>
 			{loading ? (
 				<View style={styles.skeletonList}>
 					{Array.from({ length: 6 }).map((_, index) => (
@@ -79,43 +100,56 @@ export default function HomeScreen({ onPokemonLoaded, onSelectPokemon }: HomeScr
 				</View>
 			) : null}
 			{error ? <Text style={styles.errorText}>{error}</Text> : null}
-			<ScrollView
-				contentContainerStyle={styles.filterContent}
-				horizontal
-				showsHorizontalScrollIndicator={false}
-				style={styles.filterBar}
-			>
-				<TypeBadge
-					label="All"
-					onPress={() => setSelectedType(null)}
-					selected={selectedType === null}
-					type="all"
-				/>
-				{POKEMON_TYPES.map((type) => (
+			{dashboardTab === 'filter' ? (
+				<ScrollView
+					contentContainerStyle={styles.filterContent}
+					horizontal
+					showsHorizontalScrollIndicator={false}
+					style={styles.filterBar}
+				>
 					<TypeBadge
-						key={type}
-						onPress={() => setSelectedType((current) => (current === type ? null : type))}
-						selected={selectedType === type}
-						type={type}
+						label="All"
+						onPress={() => setSelectedType(null)}
+						selected={selectedType === null}
+						type="all"
 					/>
-				))}
-			</ScrollView>
-			<FlatList
-				contentContainerStyle={styles.listContent}
-				data={visiblePokemon}
-				keyExtractor={(item) => String(item.id)}
-				onRefresh={handleRefresh}
-				refreshing={refreshing}
-				renderItem={({ item }) => (
-					<PokemonCard
-						imageUrl={displayArtwork(item)}
-						id={item.nationalDexId}
-						name={item.name}
-						onPress={() => onSelectPokemon(item)}
-						types={item.types}
-					/>
-				)}
-			/>
+					{POKEMON_TYPES.map((type) => (
+						<TypeBadge
+							key={type}
+							onPress={() => setSelectedType((current) => (current === type ? null : type))}
+							selected={selectedType === type}
+							type={type}
+						/>
+					))}
+				</ScrollView>
+			) : null}
+			{dashboardTab === 'favourites' ? (
+				<Text style={styles.placeholderText}>Favourites are not available yet.</Text>
+			) : (
+				<FlatList
+					ListEmptyComponent={
+						loading ? null : (
+							<Text style={styles.emptyText}>
+								{appliedQuery ? `No Pokemon found for "${appliedQuery}".` : 'No Pokemon to display.'}
+							</Text>
+						)
+					}
+					contentContainerStyle={styles.listContent}
+					data={visiblePokemon}
+					keyExtractor={(item) => String(item.id)}
+					onRefresh={handleRefresh}
+					refreshing={refreshing}
+					renderItem={({ item }) => (
+						<PokemonCard
+							imageUrl={displayArtwork(item)}
+							id={item.nationalDexId}
+							name={item.name}
+							onPress={() => onSelectPokemon(item)}
+							types={item.types}
+						/>
+					)}
+				/>
+			)}
 		</View>
 	);
 }
@@ -123,20 +157,6 @@ export default function HomeScreen({ onPokemonLoaded, onSelectPokemon }: HomeScr
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-	},
-	header: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		paddingHorizontal: 24,
-		paddingVertical: 10,
-		gap: 22,
-		backgroundColor: 'black',
-		borderBottomWidth: StyleSheet.hairlineWidth,
-		borderBottomColor: 'grey',
-	},
-	headerText: {
-		fontWeight: '700',
-		textTransform: 'none',
 	},
 	listContent: {
 		gap: 8,
@@ -162,14 +182,14 @@ const styles = StyleSheet.create({
 		padding: 16,
 		color: '#f87171',
 	},
-	index: {
-		width: 56,
-		fontVariant: ['tabular-nums'],
-		color: 'white',
+	emptyText: {
+		paddingVertical: 32,
+		color: '#A3A3A3',
+		textAlign: 'center',
 	},
-	name: {
-		flex: 1,
-		textTransform: 'capitalize',
-		color: 'white',
+	placeholderText: {
+		padding: 16,
+		color: '#A3A3A3',
+		textAlign: 'center',
 	},
 });
