@@ -7,8 +7,19 @@ type PokemonDetailsScreenProps = {
 	pokemon: Pokemon;
 };
 
+const MAX_BASE_STAT = 255;
+const STAT_LABELS = [
+	{ key: 'hp', label: 'HP' },
+	{ key: 'attack', label: 'Attack' },
+	{ key: 'defense', label: 'Defense' },
+	{ key: 'special-attack', label: 'Sp. Attack' },
+	{ key: 'special-defense', label: 'Sp. Defense' },
+	{ key: 'speed', label: 'Speed' },
+];
+
 export default function PokemonDetailsScreen({ onBack, pokemon }: PokemonDetailsScreenProps) {
 	const imageUrl = pokemon.sprites.official_artwork ?? pokemon.sprites.front_default;
+	const baseStatTotal = STAT_LABELS.reduce((total, stat) => total + (pokemon.stats[stat.key] ?? 0), 0);
 
 	return (
 		<ScrollView contentContainerStyle={styles.container}>
@@ -48,9 +59,17 @@ export default function PokemonDetailsScreen({ onBack, pokemon }: PokemonDetails
 
 			<View style={styles.section}>
 				<Text style={styles.sectionTitle}>Stats</Text>
-				{Object.entries(pokemon.stats).map(([name, value]) => (
-					<DetailRow key={name} label={name} value={value.toString()} />
+				{STAT_LABELS.map((stat) => (
+					<StatBar
+						key={stat.key}
+						label={stat.label}
+						value={pokemon.stats[stat.key] ?? 0}
+					/>
 				))}
+				<View style={styles.totalRow}>
+					<Text style={styles.totalLabel}>Total</Text>
+					<Text style={styles.totalValue}>{baseStatTotal}</Text>
+				</View>
 			</View>
 		</ScrollView>
 	);
@@ -66,6 +85,25 @@ function DetailRow({ label, value }: DetailRowProps) {
 		<View style={styles.detailRow}>
 			<Text style={styles.label}>{label}</Text>
 			<Text style={styles.value}>{value}</Text>
+		</View>
+	);
+}
+
+type StatBarProps = {
+	label: string;
+	value: number;
+};
+
+function StatBar({ label, value }: StatBarProps) {
+	const width = `${Math.min(value / MAX_BASE_STAT, 1) * 100}%`;
+
+	return (
+		<View style={styles.statRow}>
+			<Text style={styles.statLabel}>{label}</Text>
+			<View style={styles.statTrack}>
+				<View style={[styles.statFill, { width }]} />
+			</View>
+			<Text style={styles.statValue}>{value}</Text>
 		</View>
 	);
 }
@@ -142,5 +180,50 @@ const styles = StyleSheet.create({
 		flexShrink: 1,
 		textAlign: 'right',
 		textTransform: 'capitalize',
+	},
+	statRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 10,
+	},
+	statLabel: {
+		width: 88,
+		color: '#d4d4d4',
+		fontWeight: '700',
+	},
+	statTrack: {
+		flex: 1,
+		height: 10,
+		overflow: 'hidden',
+		backgroundColor: '#262626',
+		borderRadius: 999,
+	},
+	statFill: {
+		height: '100%',
+		backgroundColor: '#ef4444',
+		borderRadius: 999,
+	},
+	statValue: {
+		width: 36,
+		color: 'white',
+		fontVariant: ['tabular-nums'],
+		fontWeight: '700',
+		textAlign: 'right',
+	},
+	totalRow: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		paddingTop: 8,
+		borderTopWidth: StyleSheet.hairlineWidth,
+		borderTopColor: '#333',
+	},
+	totalLabel: {
+		color: 'white',
+		fontWeight: '800',
+	},
+	totalValue: {
+		color: 'white',
+		fontVariant: ['tabular-nums'],
+		fontWeight: '800',
 	},
 });
