@@ -3,8 +3,10 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import FavoriteButton from '../components/FavoriteButton';
 import { typeTheme } from '../components/pokemonTypes';
+import Shimmer from '../components/Shimmer';
 import { TypeBadgeList } from '../components/TypeBadge';
 import type { Pokemon } from '../services/pokeAPI.type';
+import { formatGeneration } from '../services/pokemonFilters';
 import { displayArtwork, displayName, variantsForPokemon } from '../services/pokemonVariants';
 
 type PokemonDetailsScreenProps = {
@@ -55,12 +57,11 @@ export default function PokemonDetailsScreen({
 				<FavoriteButton onToggle={onToggleFavorite} selected={isFavorite} />
 			</View>
 
-			<View style={[styles.hero, { borderColor: primaryType.background }]}>
+			<View style={[styles.hero, { backgroundColor: primaryType.background, borderColor: primaryType.background }]}>
 				<View style={styles.artworkStage}>
 					{artworkLoading ? (
-						<View
+						<Shimmer
 							accessibilityLabel="Loading Pokemon profile"
-							accessibilityRole="progressbar"
 							style={styles.profileSkeleton}
 						/>
 					) : null}
@@ -73,10 +74,14 @@ export default function PokemonDetailsScreen({
 						/>
 					) : null}
 				</View>
-				<Text style={styles.id}>#{pokemon.nationalDexId}</Text>
-				<Text style={styles.name}>{displayName(pokemon.name)}</Text>
-				<TypeBadgeList size="md" types={pokemon.types} />
-				<Text style={styles.generation}>{pokemon.generation ?? 'Unknown generation'}</Text>
+				<View style={styles.heroOverlay}>
+					<Text style={styles.id}>#{pokemon.nationalDexId}</Text>
+					<Text style={styles.name}>{displayName(pokemon.name)}</Text>
+					<View style={styles.generationPill}>
+						<Text style={styles.generation}>{formatGeneration(pokemon.generation)}</Text>
+					</View>
+					<TypeBadgeList size="md" types={pokemon.types} />
+				</View>
 			</View>
 
 			{variants.length > 1 ? (
@@ -214,49 +219,65 @@ const styles = StyleSheet.create({
 		fontWeight: '700',
 	},
 	hero: {
-		alignItems: 'center',
-		gap: 8,
-		padding: 20,
-		backgroundColor: '#171717',
-		borderRadius: 16,
+		overflow: 'hidden',
+		borderRadius: 24,
 		borderWidth: 2,
-		borderColor: '#333',
-	},
-	image: {
-		width: 220,
-		height: 220,
-		resizeMode: 'contain',
 	},
 	artworkStage: {
-		width: 220,
-		height: 220,
+		position: 'relative',
 		alignItems: 'center',
-		justifyContent: 'center',
+		justifyContent: 'flex-end',
+		paddingTop: 28,
+		minHeight: 252,
+	},
+	image: {
+		width: 260,
+		height: 240,
+		resizeMode: 'contain',
 	},
 	profileSkeleton: {
 		position: 'absolute',
 		width: 220,
 		height: 220,
-		backgroundColor: '#262626',
+		backgroundColor: 'rgba(0,0,0,0.28)',
 		borderRadius: 24,
 	},
 	hiddenArtwork: {
 		opacity: 0,
 	},
+	heroOverlay: {
+		alignItems: 'center',
+		gap: 8,
+		paddingTop: 8,
+		paddingBottom: 20,
+		paddingHorizontal: 16,
+		backgroundColor: 'rgba(0,0,0,0.38)',
+	},
 	id: {
-		color: '#a3a3a3',
+		color: '#FAFAFA',
 		fontSize: 16,
 		fontWeight: '700',
 	},
 	name: {
 		color: 'white',
-		fontSize: 32,
+		fontSize: 34,
 		fontWeight: '800',
 		textTransform: 'capitalize',
 	},
+	generationPill: {
+		paddingHorizontal: 12,
+		paddingVertical: 4,
+		backgroundColor: 'rgba(0,0,0,0.35)',
+		borderRadius: 999,
+		borderWidth: 1,
+		borderColor: 'rgba(255,255,255,0.35)',
+	},
 	generation: {
-		color: '#d4d4d4',
-		textTransform: 'capitalize',
+		color: '#FAFAFA',
+		fontSize: 12,
+		fontWeight: '800',
+		textTransform: 'uppercase',
+		letterSpacing: 0.6,
 	},
 	section: {
 		gap: 8,

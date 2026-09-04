@@ -3,6 +3,7 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { displayName } from '../services/pokemonVariants';
 import FavoriteButton from './FavoriteButton';
 import { typeTheme } from './pokemonTypes';
+import Shimmer from './Shimmer';
 import { TypeBadgeList } from './TypeBadge';
 
 type PokemonCardProps = {
@@ -34,16 +35,28 @@ export default function PokemonCard({
 			onPress={onPress}
 			style={({ pressed }) => [styles.card, pressed ? styles.pressedCard : null]}
 		>
-			<View style={[styles.typeAccent, { backgroundColor: primaryType.background }]} />
-			<View style={[styles.artworkFrame, { borderColor: primaryType.background }]}>
-				{imageUrl ? <Image source={{ uri: imageUrl }} style={styles.artwork} /> : null}
+			<View style={styles.cardInner}>
+				<View style={[styles.typeAccent, { backgroundColor: primaryType.background }]} />
+				<View
+					style={[
+						styles.artworkGlow,
+						{
+							backgroundColor: `${primaryType.background}55`,
+							shadowColor: primaryType.background,
+						},
+					]}
+				>
+					<View style={[styles.artworkFrame, { borderColor: primaryType.background }]}>
+						{imageUrl ? <Image source={{ uri: imageUrl }} style={styles.artwork} /> : null}
+					</View>
+				</View>
+				<View style={styles.content}>
+					<Text style={styles.id}>#{String(id).padStart(4, '0')}</Text>
+					<Text style={styles.name}>{displayName(name)}</Text>
+					<TypeBadgeList types={types} />
+				</View>
+				<FavoriteButton onToggle={onToggleFavorite} selected={favorited} />
 			</View>
-			<View style={styles.content}>
-				<Text style={styles.id}>#{String(id).padStart(4, '0')}</Text>
-				<Text style={styles.name}>{displayName(name)}</Text>
-				<TypeBadgeList types={types} />
-			</View>
-			<FavoriteButton onToggle={onToggleFavorite} selected={favorited} />
 		</Pressable>
 	);
 }
@@ -55,13 +68,13 @@ export function PokemonCardSkeleton() {
 			accessibilityRole="progressbar"
 			style={styles.skeletonCard}
 		>
-			<View style={styles.skeletonArtwork} />
+			<Shimmer style={styles.skeletonArtwork} />
 			<View style={styles.skeletonContent}>
-				<View style={styles.skeletonId} />
-				<View style={styles.skeletonName} />
+				<Shimmer style={styles.skeletonId} />
+				<Shimmer style={styles.skeletonName} />
 				<View style={styles.skeletonTypes}>
-					<View style={styles.skeletonBadge} />
-					<View style={styles.skeletonBadge} />
+					<Shimmer style={styles.skeletonBadge} />
+					<Shimmer style={styles.skeletonBadge} />
 				</View>
 			</View>
 		</View>
@@ -70,44 +83,57 @@ export function PokemonCardSkeleton() {
 
 const styles = StyleSheet.create({
 	card: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 14,
-		padding: 14,
+		borderRadius: 20,
 		backgroundColor: '#171717',
-		borderRadius: 18,
-		borderWidth: StyleSheet.hairlineWidth,
-		borderColor: '#333',
 		shadowColor: '#000',
 		shadowOffset: { width: 0, height: 4 },
 		shadowOpacity: 0.22,
 		shadowRadius: 8,
 		elevation: 3,
+	},
+	cardInner: {
 		overflow: 'hidden',
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 14,
+		paddingVertical: 12,
+		paddingRight: 14,
+		paddingLeft: 18,
+		borderRadius: 20,
+		borderWidth: StyleSheet.hairlineWidth,
+		borderColor: '#333',
 	},
 	typeAccent: {
 		position: 'absolute',
 		left: 0,
 		top: 0,
 		bottom: 0,
-		width: 5,
+		width: 6,
 	},
 	pressedCard: {
 		opacity: 0.76,
 		transform: [{ scale: 0.98 }],
 	},
+	artworkGlow: {
+		borderRadius: 48,
+		padding: 4,
+		shadowOffset: { width: 0, height: 0 },
+		shadowOpacity: 0.65,
+		shadowRadius: 12,
+		elevation: 8,
+	},
 	artworkFrame: {
-		width: 72,
-		height: 72,
+		width: 88,
+		height: 88,
 		alignItems: 'center',
 		justifyContent: 'center',
-		backgroundColor: '#262626',
-		borderRadius: 16,
-		borderWidth: 2,
+		backgroundColor: '#0A0A0A',
+		borderRadius: 44,
+		borderWidth: 3,
 	},
 	artwork: {
-		width: 68,
-		height: 68,
+		width: 80,
+		height: 80,
 		resizeMode: 'contain',
 	},
 	content: {
@@ -133,15 +159,15 @@ const styles = StyleSheet.create({
 		gap: 14,
 		padding: 14,
 		backgroundColor: '#171717',
-		borderRadius: 18,
+		borderRadius: 20,
 		borderWidth: StyleSheet.hairlineWidth,
 		borderColor: '#333',
 	},
 	skeletonArtwork: {
-		width: 72,
-		height: 72,
+		width: 88,
+		height: 88,
 		backgroundColor: '#262626',
-		borderRadius: 16,
+		borderRadius: 44,
 	},
 	skeletonContent: {
 		flex: 1,

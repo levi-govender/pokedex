@@ -59,6 +59,8 @@ describe('critical app flows', () => {
 	it('renders the homepage with Pokemon from the API', async () => {
 		const { view } = await renderLoadedApp();
 
+		expect(view.getByText('Pokédex')).toBeOnTheScreen();
+		expect(view.getByText('3 Pokémon')).toBeOnTheScreen();
 		expect(view.getByText('Search')).toBeOnTheScreen();
 		expect(view.getByText('Filter')).toBeOnTheScreen();
 		expect(view.getByText('Favourites')).toBeOnTheScreen();
@@ -88,6 +90,7 @@ describe('critical app flows', () => {
 		await user.press(view.getByLabelText('Search Pokemon'));
 
 		expect(await view.findByText('No matches')).toBeOnTheScreen();
+		expect(view.getByLabelText('Empty search illustration')).toBeOnTheScreen();
 		expect(view.getByText('No Pokemon match the current search and filters.')).toBeOnTheScreen();
 	});
 
@@ -138,6 +141,7 @@ describe('critical app flows', () => {
 		const view = await render(<App />);
 
 		expect(await view.findByText('Couldn’t load Pokemon')).toBeOnTheScreen();
+		expect(view.getByLabelText('Error illustration')).toBeOnTheScreen();
 		expect(view.getByText('Couldn’t load Pokemon (error 500).')).toBeOnTheScreen();
 		expect(view.getByLabelText('Retry')).toBeOnTheScreen();
 
@@ -152,6 +156,7 @@ describe('critical app flows', () => {
 		const view = await render(<App />);
 
 		expect(await view.findByText('Backend unavailable')).toBeOnTheScreen();
+		expect(view.getByLabelText('Offline illustration')).toBeOnTheScreen();
 		expect(view.getByText(OFFLINE_MESSAGE)).toBeOnTheScreen();
 		expect(view.getByLabelText('Retry')).toBeOnTheScreen();
 	});

@@ -14,37 +14,51 @@ export default function App() {
 
 	return (
 		<SafeAreaProvider>
-			<SafeAreaView style={styles.safeArea}>
-				<HomeScreen
-					favoriteIds={favoriteIds}
-					onPokemonLoaded={setAllPokemon}
-					onSelectPokemon={setSelectedPokemon}
-					onToggleFavorite={toggleFavorite}
-				/>
+			<View style={styles.root}>
+				<SafeAreaView style={styles.safeArea}>
+					<HomeScreen
+						favoriteIds={favoriteIds}
+						onPokemonLoaded={setAllPokemon}
+						onSelectPokemon={setSelectedPokemon}
+						onToggleFavorite={toggleFavorite}
+					/>
+				</SafeAreaView>
 				{selectedPokemon ? (
 					<View style={styles.detailsOverlay}>
-						<PokemonDetailsScreen
-							allPokemon={allPokemon}
-							isFavorite={isFavorite(selectedPokemon.id)}
-							onBack={() => setSelectedPokemon(null)}
-							onSelectPokemon={setSelectedPokemon}
-							onToggleFavorite={() => toggleFavorite(selectedPokemon.id)}
-							pokemon={selectedPokemon}
-						/>
+						<SafeAreaView style={styles.safeArea}>
+							<PokemonDetailsScreen
+								allPokemon={allPokemon}
+								isFavorite={isFavorite(selectedPokemon.id)}
+								onBack={() => setSelectedPokemon(null)}
+								onSelectPokemon={setSelectedPokemon}
+								onToggleFavorite={() => toggleFavorite(selectedPokemon.id)}
+								pokemon={selectedPokemon}
+							/>
+						</SafeAreaView>
 					</View>
 				) : null}
-			</SafeAreaView>
+			</View>
 		</SafeAreaProvider>
 	);
 }
 
 const styles = StyleSheet.create({
+	root: {
+		flex: 1,
+		backgroundColor: 'black',
+	},
 	safeArea: {
 		flex: 1,
 		backgroundColor: 'black',
 	},
 	detailsOverlay: {
-		...StyleSheet.absoluteFillObject,
+		position: 'absolute',
+		top: 0,
+		right: 0,
+		bottom: 0,
+		left: 0,
+		zIndex: 20,
+		elevation: 20,
 		backgroundColor: 'black',
 	},
 });
