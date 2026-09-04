@@ -1,16 +1,17 @@
-import { useEffect, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 
 import PokemonCard from '../components/PokemonCard';
-import { listPokemons } from '../services/pokeapi';
+import { listPokemons, refreshPokemons } from '../services/pokeapi';
 import type { Pokemon } from '../services/pokeAPI.type';
 
 export default function HomeScreen() {
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [pokemon, setPokemon] = useState<Pokemon[]>([]);
+	const [refreshing, setRefreshing] = useState(false);
 
-	useEffect(() => {
+	const loadPokemons = useCallback(() => {
 		listPokemons()
 			.then((results) => {
 				setPokemon(results);
@@ -24,11 +25,32 @@ export default function HomeScreen() {
 			});
 	}, []);
 
+	useEffect(() => {
+		loadPokemons();
+	}, [loadPokemons]);
+
+	const handleRefresh = useCallback(() => {
+		setRefreshing(true);
+		refreshPokemons()
+			.then(() => listPokemons())
+			.then((results) => {
+				setPokemon(results);
+				setError(null);
+			})
+			.catch((refreshError: unknown) => {
+				setError(refreshError instanceof Error ? refreshError.message : 'Failed to refresh Pokemon');
+			})
+			.finally(() => {
+				setRefreshing(false);
+			});
+	}, []);
+
 	return (
 		<View style={styles.container}>
 			<View style={styles.header}>
 				<Text style={[styles.index, styles.headerText]}>ID</Text>
 				<Text style={[styles.name, styles.headerText]}>Pokemon</Text>
+				{refreshing ? <ActivityIndicator color="white" size="small" /> : null}
 			</View>
 			{loading ? <Text style={styles.statusText}>Loading Pokemon...</Text> : null}
 			{error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -36,6 +58,8 @@ export default function HomeScreen() {
 				contentContainerStyle={styles.listContent}
 				data={pokemon}
 				keyExtractor={(item) => String(item.id)}
+				onRefresh={handleRefresh}
+				refreshing={refreshing}
 				renderItem={({ item }) => (
 					<PokemonCard id={item.nationalDexId} name={item.name} />
 				)}
