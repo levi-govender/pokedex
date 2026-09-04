@@ -41,7 +41,12 @@ export default function PokemonDetailsScreen({
 	return (
 		<ScrollView contentContainerStyle={styles.container}>
 			<View style={styles.topBar}>
-				<Pressable onPress={onBack} style={styles.backButton}>
+				<Pressable
+					accessibilityLabel="Go back"
+					accessibilityRole="button"
+					onPress={onBack}
+					style={styles.backButton}
+				>
 					<Text style={styles.backButtonText}>Back</Text>
 				</Pressable>
 				<FavoriteButton onToggle={onToggleFavorite} selected={isFavorite} />
