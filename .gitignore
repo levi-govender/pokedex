@@ -59,7 +59,7 @@ Session.vim
 ## =========================
 .env
 .env.*
-!.env.example
+.env.example
 *.pem
 *.key
 *.cert
@@ -73,6 +73,15 @@ logs/
 *.pid
 *.seed
 *.pid.lock
+
+## =========================
+## Local databases / dumps
+## =========================
+pgdata/
+postgres-data/
+*.dump
+*.backup
+*.sql.gz
 
 ## =========================
 ## Dependency directories

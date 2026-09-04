@@ -4,6 +4,18 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### Environment ###
+.env
+.env.*
+!.env.example
+
+### Local databases / dumps ###
+pgdata/
+postgres-data/
+*.dump
+*.backup
+*.sql.gz
+
 ### STS ###
 .apt_generated
 .classpath
