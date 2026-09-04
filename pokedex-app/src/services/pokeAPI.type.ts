@@ -1,11 +1,23 @@
-export type NamedAPIResource = {
+export type PokemonAbility = {
 	name: string;
-	url: string;
+	hidden: boolean;
 };
 
-export type NamedAPIResourceList = {
-	count: number;
-	next: string | null;
-	previous: string | null;
-	results: NamedAPIResource[];
+export type Pokemon = {
+	id: number;
+	pokeapiId: number;
+	nationalDexId: number;
+	name: string;
+	heightDecimeters: number;
+	weightHectograms: number;
+	baseExperience: number | null;
+	types: string[];
+	abilities: PokemonAbility[];
+	stats: Record<string, number>;
+	sprites: Record<string, string>;
+	generation: string | null;
+	defaultVariant: boolean;
+	variantOfNationalDexId: number | null;
+	createdAt: string;
+	updatedAt: string;
 };

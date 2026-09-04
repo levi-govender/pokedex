@@ -1,14 +1,11 @@
 import { fetch } from 'expo/fetch';
 
-import type { NamedAPIResourceList } from './pokeAPI.type';
+import type { Pokemon } from './pokeAPI.type';
 
-const POKEAPI_BASE_URL = 'https://pokeapi.co/api/v2';
-const POKEMON_LIST_LIMIT = 2000;
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
-export async function listPokemons(): Promise<NamedAPIResourceList> {
-	const response = await fetch(
-		`${POKEAPI_BASE_URL}/pokemon?limit=${POKEMON_LIST_LIMIT}`,
-	);
+export async function listPokemons(): Promise<Pokemon[]> {
+	const response = await fetch(`${API_BASE_URL}/api/pokemon`);
 
-	return (await response.json()) as NamedAPIResourceList;
+	return (await response.json()) as Pokemon[];
 }
