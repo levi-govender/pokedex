@@ -50,7 +50,11 @@ export default function PokemonCard({
 
 export function PokemonCardSkeleton() {
 	return (
-		<View style={styles.skeletonCard}>
+		<View
+			accessibilityLabel="Loading Pokemon"
+			accessibilityRole="progressbar"
+			style={styles.skeletonCard}
+		>
 			<View style={styles.skeletonArtwork} />
 			<View style={styles.skeletonContent}>
 				<View style={styles.skeletonId} />

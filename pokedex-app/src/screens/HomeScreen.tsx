@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 
 import ActiveFiltersBar from '../components/ActiveFiltersBar';
 import PokedexDashboard, { type DashboardTab } from '../components/PokedexDashboard';
 import PokemonCard, { PokemonCardSkeleton } from '../components/PokemonCard';
 import PokemonFilterPanel from '../components/PokemonFilterPanel';
+import StatusPanel from '../components/StatusPanel';
+import { loadErrorCopy, toLoadError } from '../services/loadError';
 import { listPokemons, refreshPokemons } from '../services/pokeapi';
 import type { Pokemon } from '../services/pokeAPI.type';
 import {
@@ -15,6 +17,13 @@ import {
 } from '../services/pokemonFilters';
 import { matchesPokemonSearch } from '../services/pokemonSearch';
 import { displayablePokemon, displayArtwork } from '../services/pokemonVariants';
+
+const OFFLINE_MESSAGE =
+	'The Pokedex server is unavailable. Check your connection and that the backend is running.';
+
+function catalogError(error: unknown) {
+	return loadErrorCopy(toLoadError(error, OFFLINE_MESSAGE));
+}
 
 type HomeScreenProps = {
 	favoriteIds: number[];
@@ -29,7 +38,7 @@ export default function HomeScreen({
 	onSelectPokemon,
 	onToggleFavorite,
 }: HomeScreenProps) {
-	const [error, setError] = useState<string | null>(null);
+	const [error, setError] = useState<ReturnType<typeof loadErrorCopy> | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [pokemon, setPokemon] = useState<Pokemon[]>([]);
 	const [refreshing, setRefreshing] = useState(false);
@@ -74,41 +83,79 @@ export default function HomeScreen({
 		setSort(DEFAULT_SORT);
 	}, []);
 
-	const loadPokemons = useCallback(() => {
-		listPokemons()
-			.then((results) => {
-				onPokemonLoaded(results);
-				setPokemon(displayablePokemon(results));
-				setError(null);
-			})
-			.catch((fetchError: unknown) => {
-				setError(fetchError instanceof Error ? fetchError.message : 'Failed to load Pokemon');
-			})
-			.finally(() => {
-				setLoading(false);
-			});
-	}, [onPokemonLoaded]);
+	const applyCatalog = useCallback(
+		(results: Pokemon[]) => {
+			onPokemonLoaded(results);
+			setPokemon(displayablePokemon(results));
+			setError(null);
+		},
+		[onPokemonLoaded],
+	);
+
+	const loadPokemons = useCallback(
+		(showSkeleton: boolean) => {
+			if (showSkeleton) {
+				setLoading(true);
+			}
+
+			setError(null);
+			listPokemons()
+				.then(applyCatalog)
+				.catch((fetchError: unknown) => {
+					setError(catalogError(fetchError));
+				})
+				.finally(() => {
+					setLoading(false);
+				});
+		},
+		[applyCatalog],
+	);
 
 	useEffect(() => {
-		loadPokemons();
-	}, [loadPokemons]);
+		let cancelled = false;
+
+		listPokemons()
+			.then((results) => {
+				if (!cancelled) {
+					applyCatalog(results);
+				}
+			})
+			.catch((fetchError: unknown) => {
+				if (!cancelled) {
+					setError(catalogError(fetchError));
+				}
+			})
+			.finally(() => {
+				if (!cancelled) {
+					setLoading(false);
+				}
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	}, [applyCatalog]);
 
 	const handleRefresh = useCallback(() => {
 		setRefreshing(true);
 		refreshPokemons()
 			.then(() => listPokemons())
-			.then((results) => {
-				onPokemonLoaded(results);
-				setPokemon(displayablePokemon(results));
-				setError(null);
-			})
+			.then(applyCatalog)
 			.catch((refreshError: unknown) => {
-				setError(refreshError instanceof Error ? refreshError.message : 'Failed to refresh Pokemon');
+				setError(catalogError(refreshError));
 			})
 			.finally(() => {
 				setRefreshing(false);
 			});
-	}, [onPokemonLoaded]);
+	}, [applyCatalog]);
+
+	const emptyTitle = dashboardTab === 'favourites' ? 'No favorites yet' : appliedQuery || hasActiveFilters ? 'No matches' : 'No Pokemon';
+	const emptyMessage =
+		dashboardTab === 'favourites'
+			? 'Tap the star on a Pokemon to save it here.'
+			: appliedQuery || hasActiveFilters
+				? 'No Pokemon match the current search and filters.'
+				: 'There are no Pokemon to display.';
 
 	return (
 		<View style={styles.container}>
@@ -151,37 +198,44 @@ export default function HomeScreen({
 						<PokemonCardSkeleton key={index} />
 					))}
 				</View>
-			) : null}
-			{error ? <Text style={styles.errorText}>{error}</Text> : null}
-			<FlatList
-				ListEmptyComponent={
-					loading ? null : (
-						<Text style={styles.emptyText}>
-							{dashboardTab === 'favourites'
-								? 'No favorite Pokemon yet. Tap the star to save one.'
-								: appliedQuery || hasActiveFilters
-									? 'No Pokemon match the current search and filters.'
-									: 'No Pokemon to display.'}
-						</Text>
-					)
-				}
-				contentContainerStyle={styles.listContent}
-				data={listPokemon}
-				keyExtractor={(item) => String(item.id)}
-				onRefresh={handleRefresh}
-				refreshing={refreshing}
-				renderItem={({ item }) => (
-					<PokemonCard
-						favorited={favoriteIds.includes(item.id)}
-						imageUrl={displayArtwork(item)}
-						id={item.nationalDexId}
-						name={item.name}
-						onPress={() => onSelectPokemon(item)}
-						onToggleFavorite={() => onToggleFavorite(item.id)}
-						types={item.types}
-					/>
-				)}
-			/>
+			) : error && pokemon.length === 0 ? (
+				<StatusPanel
+					actionLabel="Retry"
+					message={error.message}
+					onAction={() => loadPokemons(true)}
+					title={error.title}
+				/>
+			) : (
+				<FlatList
+					ListEmptyComponent={<StatusPanel message={emptyMessage} title={emptyTitle} />}
+					ListHeaderComponent={
+						error ? (
+							<StatusPanel
+								actionLabel="Retry"
+								message={error.message}
+								onAction={() => loadPokemons(true)}
+								title={error.title}
+							/>
+						) : null
+					}
+					contentContainerStyle={styles.listContent}
+					data={listPokemon}
+					keyExtractor={(item) => String(item.id)}
+					onRefresh={handleRefresh}
+					refreshing={refreshing}
+					renderItem={({ item }) => (
+						<PokemonCard
+							favorited={favoriteIds.includes(item.id)}
+							imageUrl={displayArtwork(item)}
+							id={item.nationalDexId}
+							name={item.name}
+							onPress={() => onSelectPokemon(item)}
+							onToggleFavorite={() => onToggleFavorite(item.id)}
+							types={item.types}
+						/>
+					)}
+				/>
+			)}
 		</View>
 	);
 }
@@ -197,14 +251,5 @@ const styles = StyleSheet.create({
 	skeletonList: {
 		gap: 8,
 		padding: 16,
-	},
-	errorText: {
-		padding: 16,
-		color: '#f87171',
-	},
-	emptyText: {
-		paddingVertical: 32,
-		color: '#A3A3A3',
-		textAlign: 'center',
 	},
 });

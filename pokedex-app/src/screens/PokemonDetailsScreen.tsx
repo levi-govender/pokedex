@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import FavoriteButton from '../components/FavoriteButton';
@@ -37,6 +38,8 @@ export default function PokemonDetailsScreen({
 	const primaryType = typeTheme(pokemon.types[0] ?? 'normal');
 	const baseStatTotal = STAT_LABELS.reduce((total, stat) => total + (pokemon.stats[stat.key] ?? 0), 0);
 	const variants = variantsForPokemon(allPokemon, pokemon);
+	const [artworkReadyFor, setArtworkReadyFor] = useState<string | null>(null);
+	const artworkLoading = Boolean(imageUrl) && artworkReadyFor !== imageUrl;
 
 	return (
 		<ScrollView contentContainerStyle={styles.container}>
@@ -53,7 +56,23 @@ export default function PokemonDetailsScreen({
 			</View>
 
 			<View style={[styles.hero, { borderColor: primaryType.background }]}>
-				{imageUrl ? <Image source={{ uri: imageUrl }} style={styles.image} /> : null}
+				<View style={styles.artworkStage}>
+					{artworkLoading ? (
+						<View
+							accessibilityLabel="Loading Pokemon profile"
+							accessibilityRole="progressbar"
+							style={styles.profileSkeleton}
+						/>
+					) : null}
+					{imageUrl ? (
+						<Image
+							accessibilityLabel={`${displayName(pokemon.name)} artwork`}
+							onLoadEnd={() => setArtworkReadyFor(imageUrl ?? null)}
+							source={{ uri: imageUrl }}
+							style={[styles.image, artworkLoading ? styles.hiddenArtwork : null]}
+						/>
+					) : null}
+				</View>
 				<Text style={styles.id}>#{pokemon.nationalDexId}</Text>
 				<Text style={styles.name}>{displayName(pokemon.name)}</Text>
 				<TypeBadgeList size="md" types={pokemon.types} />
@@ -207,6 +226,22 @@ const styles = StyleSheet.create({
 		width: 220,
 		height: 220,
 		resizeMode: 'contain',
+	},
+	artworkStage: {
+		width: 220,
+		height: 220,
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	profileSkeleton: {
+		position: 'absolute',
+		width: 220,
+		height: 220,
+		backgroundColor: '#262626',
+		borderRadius: 24,
+	},
+	hiddenArtwork: {
+		opacity: 0,
 	},
 	id: {
 		color: '#a3a3a3',

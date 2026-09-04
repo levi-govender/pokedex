@@ -1,7 +1,8 @@
-import { render, userEvent, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, userEvent, waitFor } from '@testing-library/react-native';
 
 import App from '../../App';
 import { loadFavoriteIds, saveFavoriteIds } from '../services/favoritesStore';
+import { PokedexLoadError } from '../services/loadError';
 import { listPokemons } from '../services/pokeapi';
 import { samplePokemon } from '../test/pokemonFixtures';
 
@@ -11,6 +12,9 @@ jest.mock('../services/favoritesStore');
 const mockedListPokemons = jest.mocked(listPokemons);
 const mockedLoadFavoriteIds = jest.mocked(loadFavoriteIds);
 const mockedSaveFavoriteIds = jest.mocked(saveFavoriteIds);
+
+const OFFLINE_MESSAGE =
+	'The Pokedex server is unavailable. Check your connection and that the backend is running.';
 
 function cardLabel(name: string, dex: number, types: string) {
 	return `${name}, Dex number ${dex}, ${types} type`;
@@ -31,6 +35,25 @@ describe('critical app flows', () => {
 		mockedListPokemons.mockResolvedValue(samplePokemon);
 		mockedLoadFavoriteIds.mockResolvedValue([]);
 		mockedSaveFavoriteIds.mockResolvedValue(undefined);
+	});
+
+	it('renders skeleton cards while the catalog loads', async () => {
+		let resolveList: (value: typeof samplePokemon) => void = () => undefined;
+		mockedListPokemons.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					resolveList = resolve;
+				}),
+		);
+
+		const view = await render(<App />);
+
+		expect(view.getAllByLabelText('Loading Pokemon').length).toBeGreaterThan(0);
+
+		resolveList(samplePokemon);
+
+		expect(await view.findByLabelText(cardLabel('bulbasaur', 1, 'grass and poison'))).toBeOnTheScreen();
+		expect(view.queryByLabelText('Loading Pokemon')).not.toBeOnTheScreen();
 	});
 
 	it('renders the homepage with Pokemon from the API', async () => {
@@ -57,6 +80,17 @@ describe('critical app flows', () => {
 		});
 	});
 
+	it('shows an empty search state when nothing matches', async () => {
+		const { user, view } = await renderLoadedApp();
+
+		await user.press(view.getByText('Search'));
+		await user.type(view.getByLabelText('Search Pokemon by name or Dex number'), 'zzzz');
+		await user.press(view.getByLabelText('Search Pokemon'));
+
+		expect(await view.findByText('No matches')).toBeOnTheScreen();
+		expect(view.getByText('No Pokemon match the current search and filters.')).toBeOnTheScreen();
+	});
+
 	it('opens Pokemon details when a card is selected', async () => {
 		const { user, view } = await renderLoadedApp();
 
@@ -66,6 +100,20 @@ describe('critical app flows', () => {
 		expect(view.getByText('#6')).toBeOnTheScreen();
 		expect(view.getByText('Overview')).toBeOnTheScreen();
 		expect(view.getByText('0.7 m')).toBeOnTheScreen();
+	});
+
+	it('shows a profile loading state until artwork loads', async () => {
+		const { user, view } = await renderLoadedApp();
+
+		await user.press(view.getByLabelText(cardLabel('charizard', 6, 'fire and flying')));
+
+		expect(await view.findByLabelText('Loading Pokemon profile')).toBeOnTheScreen();
+
+		fireEvent(view.getByLabelText('charizard artwork'), 'loadEnd');
+
+		await waitFor(() => {
+			expect(view.queryByLabelText('Loading Pokemon profile')).not.toBeOnTheScreen();
+		});
 	});
 
 	it('returns to the homepage from details', async () => {
@@ -81,14 +129,31 @@ describe('critical app flows', () => {
 		expect(view.getByText('Search')).toBeOnTheScreen();
 	});
 
-	it('shows an error when the Pokemon API fails', async () => {
-		mockedListPokemons.mockRejectedValue(new Error('Network down'));
+	it('shows an API error state with retry', async () => {
+		mockedListPokemons
+			.mockRejectedValueOnce(new PokedexLoadError('http', 'Couldn’t load Pokemon (error 500).', 500))
+			.mockResolvedValueOnce(samplePokemon);
+
+		const user = userEvent.setup();
+		const view = await render(<App />);
+
+		expect(await view.findByText('Couldn’t load Pokemon')).toBeOnTheScreen();
+		expect(view.getByText('Couldn’t load Pokemon (error 500).')).toBeOnTheScreen();
+		expect(view.getByLabelText('Retry')).toBeOnTheScreen();
+
+		await user.press(view.getByLabelText('Retry'));
+
+		expect(await view.findByLabelText(cardLabel('bulbasaur', 1, 'grass and poison'))).toBeOnTheScreen();
+	});
+
+	it('shows an offline backend-unavailable state', async () => {
+		mockedListPokemons.mockRejectedValue(new PokedexLoadError('offline', OFFLINE_MESSAGE));
 
 		const view = await render(<App />);
 
-		expect(await view.findByText('Network down')).toBeOnTheScreen();
-		expect(view.getByText('No Pokemon to display.')).toBeOnTheScreen();
-		expect(view.queryByLabelText(cardLabel('bulbasaur', 1, 'grass and poison'))).not.toBeOnTheScreen();
+		expect(await view.findByText('Backend unavailable')).toBeOnTheScreen();
+		expect(view.getByText(OFFLINE_MESSAGE)).toBeOnTheScreen();
+		expect(view.getByLabelText('Retry')).toBeOnTheScreen();
 	});
 
 	it('saves a favorite and lists it on the Favourites tab', async () => {
