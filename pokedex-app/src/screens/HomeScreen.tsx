@@ -17,11 +17,18 @@ import { matchesPokemonSearch } from '../services/pokemonSearch';
 import { displayablePokemon, displayArtwork } from '../services/pokemonVariants';
 
 type HomeScreenProps = {
+	favoriteIds: number[];
 	onPokemonLoaded: (pokemon: Pokemon[]) => void;
 	onSelectPokemon: (pokemon: Pokemon) => void;
+	onToggleFavorite: (id: number) => void;
 };
 
-export default function HomeScreen({ onPokemonLoaded, onSelectPokemon }: HomeScreenProps) {
+export default function HomeScreen({
+	favoriteIds,
+	onPokemonLoaded,
+	onSelectPokemon,
+	onToggleFavorite,
+}: HomeScreenProps) {
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [pokemon, setPokemon] = useState<Pokemon[]>([]);
@@ -53,6 +60,13 @@ export default function HomeScreen({ onPokemonLoaded, onSelectPokemon }: HomeScr
 
 		return filtered.filter((item) => matchesPokemonSearch(item, appliedQuery));
 	}, [appliedQuery, pokemon, selectedGenerations, selectedTypes, sort]);
+
+	const favoritePokemon = useMemo(
+		() => pokemon.filter((item) => favoriteIds.includes(item.id)),
+		[favoriteIds, pokemon],
+	);
+
+	const listPokemon = dashboardTab === 'favourites' ? favoritePokemon : visiblePokemon;
 
 	const clearFilters = useCallback(() => {
 		setSelectedTypes([]);
@@ -139,35 +153,35 @@ export default function HomeScreen({ onPokemonLoaded, onSelectPokemon }: HomeScr
 				</View>
 			) : null}
 			{error ? <Text style={styles.errorText}>{error}</Text> : null}
-			{dashboardTab === 'favourites' ? (
-				<Text style={styles.placeholderText}>Favourites are not available yet.</Text>
-			) : (
-				<FlatList
-					ListEmptyComponent={
-						loading ? null : (
-							<Text style={styles.emptyText}>
-								{appliedQuery || hasActiveFilters
+			<FlatList
+				ListEmptyComponent={
+					loading ? null : (
+						<Text style={styles.emptyText}>
+							{dashboardTab === 'favourites'
+								? 'No favorite Pokemon yet. Tap the star to save one.'
+								: appliedQuery || hasActiveFilters
 									? 'No Pokemon match the current search and filters.'
 									: 'No Pokemon to display.'}
-							</Text>
-						)
-					}
-					contentContainerStyle={styles.listContent}
-					data={visiblePokemon}
-					keyExtractor={(item) => String(item.id)}
-					onRefresh={handleRefresh}
-					refreshing={refreshing}
-					renderItem={({ item }) => (
-						<PokemonCard
-							imageUrl={displayArtwork(item)}
-							id={item.nationalDexId}
-							name={item.name}
-							onPress={() => onSelectPokemon(item)}
-							types={item.types}
-						/>
-					)}
-				/>
-			)}
+						</Text>
+					)
+				}
+				contentContainerStyle={styles.listContent}
+				data={listPokemon}
+				keyExtractor={(item) => String(item.id)}
+				onRefresh={handleRefresh}
+				refreshing={refreshing}
+				renderItem={({ item }) => (
+					<PokemonCard
+						favorited={favoriteIds.includes(item.id)}
+						imageUrl={displayArtwork(item)}
+						id={item.nationalDexId}
+						name={item.name}
+						onPress={() => onSelectPokemon(item)}
+						onToggleFavorite={() => onToggleFavorite(item.id)}
+						types={item.types}
+					/>
+				)}
+			/>
 		</View>
 	);
 }
@@ -190,11 +204,6 @@ const styles = StyleSheet.create({
 	},
 	emptyText: {
 		paddingVertical: 32,
-		color: '#A3A3A3',
-		textAlign: 'center',
-	},
-	placeholderText: {
-		padding: 16,
 		color: '#A3A3A3',
 		textAlign: 'center',
 	},
