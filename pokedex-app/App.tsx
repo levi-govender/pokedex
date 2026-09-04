@@ -7,6 +7,7 @@ import PokemonDetailsScreen from './src/screens/PokemonDetailsScreen';
 import type { Pokemon } from './src/services/pokeAPI.type';
 
 export default function App() {
+	const [allPokemon, setAllPokemon] = useState<Pokemon[]>([]);
 	const [selectedPokemon, setSelectedPokemon] = useState<Pokemon | null>(null);
 
 	return (
@@ -14,11 +15,16 @@ export default function App() {
 			<SafeAreaView style={styles.safeArea}>
 				{selectedPokemon ? (
 					<PokemonDetailsScreen
+						allPokemon={allPokemon}
 						onBack={() => setSelectedPokemon(null)}
+						onSelectPokemon={setSelectedPokemon}
 						pokemon={selectedPokemon}
 					/>
 				) : (
-					<HomeScreen onSelectPokemon={setSelectedPokemon} />
+					<HomeScreen
+						onPokemonLoaded={setAllPokemon}
+						onSelectPokemon={setSelectedPokemon}
+					/>
 				)}
 			</SafeAreaView>
 		</SafeAreaProvider>

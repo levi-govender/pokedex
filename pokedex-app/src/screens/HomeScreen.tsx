@@ -4,12 +4,14 @@ import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-nativ
 import PokemonCard from '../components/PokemonCard';
 import { listPokemons, refreshPokemons } from '../services/pokeapi';
 import type { Pokemon } from '../services/pokeAPI.type';
+import { displayablePokemon } from '../services/pokemonVariants';
 
 type HomeScreenProps = {
+	onPokemonLoaded: (pokemon: Pokemon[]) => void;
 	onSelectPokemon: (pokemon: Pokemon) => void;
 };
 
-export default function HomeScreen({ onSelectPokemon }: HomeScreenProps) {
+export default function HomeScreen({ onPokemonLoaded, onSelectPokemon }: HomeScreenProps) {
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [pokemon, setPokemon] = useState<Pokemon[]>([]);
@@ -18,7 +20,8 @@ export default function HomeScreen({ onSelectPokemon }: HomeScreenProps) {
 	const loadPokemons = useCallback(() => {
 		listPokemons()
 			.then((results) => {
-				setPokemon(results);
+				onPokemonLoaded(results);
+				setPokemon(displayablePokemon(results));
 				setError(null);
 			})
 			.catch((fetchError: unknown) => {
@@ -27,7 +30,7 @@ export default function HomeScreen({ onSelectPokemon }: HomeScreenProps) {
 			.finally(() => {
 				setLoading(false);
 			});
-	}, []);
+	}, [onPokemonLoaded]);
 
 	useEffect(() => {
 		loadPokemons();
@@ -38,7 +41,8 @@ export default function HomeScreen({ onSelectPokemon }: HomeScreenProps) {
 		refreshPokemons()
 			.then(() => listPokemons())
 			.then((results) => {
-				setPokemon(results);
+				onPokemonLoaded(results);
+				setPokemon(displayablePokemon(results));
 				setError(null);
 			})
 			.catch((refreshError: unknown) => {
@@ -47,7 +51,7 @@ export default function HomeScreen({ onSelectPokemon }: HomeScreenProps) {
 			.finally(() => {
 				setRefreshing(false);
 			});
-	}, []);
+	}, [onPokemonLoaded]);
 
 	return (
 		<View style={styles.container}>

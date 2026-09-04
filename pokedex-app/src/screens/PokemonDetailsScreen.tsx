@@ -1,9 +1,12 @@
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { Pokemon } from '../services/pokeAPI.type';
+import { displayArtwork, displayName, variantsForPokemon } from '../services/pokemonVariants';
 
 type PokemonDetailsScreenProps = {
+	allPokemon: Pokemon[];
 	onBack: () => void;
+	onSelectPokemon: (pokemon: Pokemon) => void;
 	pokemon: Pokemon;
 };
 
@@ -17,9 +20,15 @@ const STAT_LABELS = [
 	{ key: 'speed', label: 'Speed' },
 ];
 
-export default function PokemonDetailsScreen({ onBack, pokemon }: PokemonDetailsScreenProps) {
-	const imageUrl = pokemon.sprites.official_artwork ?? pokemon.sprites.front_default;
+export default function PokemonDetailsScreen({
+	allPokemon,
+	onBack,
+	onSelectPokemon,
+	pokemon,
+}: PokemonDetailsScreenProps) {
+	const imageUrl = displayArtwork(pokemon);
 	const baseStatTotal = STAT_LABELS.reduce((total, stat) => total + (pokemon.stats[stat.key] ?? 0), 0);
+	const variants = variantsForPokemon(allPokemon, pokemon);
 
 	return (
 		<ScrollView contentContainerStyle={styles.container}>
@@ -30,9 +39,25 @@ export default function PokemonDetailsScreen({ onBack, pokemon }: PokemonDetails
 			<View style={styles.hero}>
 				{imageUrl ? <Image source={{ uri: imageUrl }} style={styles.image} /> : null}
 				<Text style={styles.id}>#{pokemon.nationalDexId}</Text>
-				<Text style={styles.name}>{pokemon.name}</Text>
+				<Text style={styles.name}>{displayName(pokemon.name)}</Text>
 				<Text style={styles.generation}>{pokemon.generation ?? 'Unknown generation'}</Text>
 			</View>
+
+			{variants.length > 1 ? (
+				<View style={styles.section}>
+					<Text style={styles.sectionTitle}>Variants</Text>
+					<View style={styles.variantList}>
+						{variants.map((variant) => (
+							<VariantButton
+								key={variant.id}
+								onPress={() => onSelectPokemon(variant)}
+								pokemon={variant}
+								selected={variant.id === pokemon.id}
+							/>
+						))}
+					</View>
+				</View>
+			) : null}
 
 			<View style={styles.section}>
 				<Text style={styles.sectionTitle}>Overview</Text>
@@ -72,6 +97,26 @@ export default function PokemonDetailsScreen({ onBack, pokemon }: PokemonDetails
 				</View>
 			</View>
 		</ScrollView>
+	);
+}
+
+type VariantButtonProps = {
+	onPress: () => void;
+	pokemon: Pokemon;
+	selected: boolean;
+};
+
+function VariantButton({ onPress, pokemon, selected }: VariantButtonProps) {
+	const imageUrl = displayArtwork(pokemon);
+
+	return (
+		<Pressable
+			onPress={onPress}
+			style={[styles.variantButton, selected ? styles.selectedVariantButton : null]}
+		>
+			{imageUrl ? <Image source={{ uri: imageUrl }} style={styles.variantImage} /> : null}
+			<Text style={styles.variantName}>{displayName(pokemon.name)}</Text>
+		</Pressable>
 	);
 }
 
@@ -165,6 +210,36 @@ const styles = StyleSheet.create({
 		color: 'white',
 		fontSize: 18,
 		fontWeight: '800',
+	},
+	variantList: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: 10,
+	},
+	variantButton: {
+		alignItems: 'center',
+		width: 112,
+		gap: 6,
+		padding: 10,
+		backgroundColor: '#262626',
+		borderRadius: 12,
+		borderWidth: StyleSheet.hairlineWidth,
+		borderColor: '#404040',
+	},
+	selectedVariantButton: {
+		borderColor: '#ef4444',
+	},
+	variantImage: {
+		width: 72,
+		height: 72,
+		resizeMode: 'contain',
+	},
+	variantName: {
+		color: 'white',
+		fontSize: 12,
+		fontWeight: '700',
+		textAlign: 'center',
+		textTransform: 'capitalize',
 	},
 	detailRow: {
 		flexDirection: 'row',
