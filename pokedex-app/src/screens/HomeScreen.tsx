@@ -3,20 +3,13 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 import PokemonCard from '../components/PokemonCard';
 import { listPokemons } from '../services/pokeapi';
-import type { NamedAPIResource } from '../services/pokeAPI.type';
-
-function idFromUrl(url: string) {
-	const segments = url.split('/').filter(Boolean);
-	return segments[segments.length - 1];
-}
+import type { Pokemon } from '../services/pokeAPI.type';
 
 export default function HomeScreen() {
-	const [pokemon, setPokemon] = useState<NamedAPIResource[]>([]);
+	const [pokemon, setPokemon] = useState<Pokemon[]>([]);
 
 	useEffect(() => {
-		listPokemons().then((data) => {
-			setPokemon(data.results);
-		});
+		listPokemons().then(setPokemon);
 	}, []);
 
 	return (
@@ -28,9 +21,9 @@ export default function HomeScreen() {
 			<FlatList
 				contentContainerStyle={styles.listContent}
 				data={pokemon}
-				keyExtractor={(item) => item.url}
+				keyExtractor={(item) => String(item.id)}
 				renderItem={({ item }) => (
-					<PokemonCard id={idFromUrl(item.url)} name={item.name} />
+					<PokemonCard id={item.nationalDexId} name={item.name} />
 				)}
 			/>
 		</View>

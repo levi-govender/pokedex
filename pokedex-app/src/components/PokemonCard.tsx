@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 type PokemonCardProps = {
-	id: string;
+	id: number;
 	name: string;
 };
 
