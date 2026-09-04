@@ -3,8 +3,8 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 type DashboardTab = 'search' | 'filter' | 'favourites';
 
 type PokedexDashboardProps = {
-	activeTab: DashboardTab;
-	onChangeTab: (tab: DashboardTab) => void;
+	activeTab: DashboardTab | null;
+	onChangeTab: (tab: DashboardTab | null) => void;
 	onClearSearch: () => void;
 	onSearchChange: (value: string) => void;
 	onSubmitSearch: () => void;
@@ -36,7 +36,7 @@ export default function PokedexDashboard({
 							accessibilityRole="button"
 							accessibilityState={{ selected }}
 							key={tab.id}
-							onPress={() => onChangeTab(tab.id)}
+							onPress={() => onChangeTab(tab.id === activeTab ? null : tab.id)}
 							style={[styles.tab, selected ? styles.selectedTab : null]}
 						>
 							<Text style={[styles.tabLabel, selected ? styles.selectedTabLabel : null]}>{tab.label}</Text>

@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 
+import ActiveFiltersBar from '../components/ActiveFiltersBar';
 import PokedexDashboard, { type DashboardTab } from '../components/PokedexDashboard';
 import PokemonCard, { PokemonCardSkeleton } from '../components/PokemonCard';
-import { POKEMON_TYPES } from '../components/pokemonTypes';
-import TypeBadge from '../components/TypeBadge';
+import PokemonFilterPanel from '../components/PokemonFilterPanel';
 import { listPokemons, refreshPokemons } from '../services/pokeapi';
 import type { Pokemon } from '../services/pokeAPI.type';
+import {
+	applyPokemonFilters,
+	DEFAULT_SORT,
+	type SortOption,
+	toggleValue,
+} from '../services/pokemonFilters';
 import { matchesPokemonSearch } from '../services/pokemonSearch';
 import { displayablePokemon, displayArtwork } from '../services/pokemonVariants';
 
@@ -20,8 +26,10 @@ export default function HomeScreen({ onPokemonLoaded, onSelectPokemon }: HomeScr
 	const [loading, setLoading] = useState(true);
 	const [pokemon, setPokemon] = useState<Pokemon[]>([]);
 	const [refreshing, setRefreshing] = useState(false);
-	const [selectedType, setSelectedType] = useState<string | null>(null);
-	const [dashboardTab, setDashboardTab] = useState<DashboardTab>('search');
+	const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+	const [selectedGenerations, setSelectedGenerations] = useState<string[]>([]);
+	const [sort, setSort] = useState<SortOption>(DEFAULT_SORT);
+	const [dashboardTab, setDashboardTab] = useState<DashboardTab | null>(null);
 	const [searchValue, setSearchValue] = useState('');
 	const [appliedQuery, setAppliedQuery] = useState('');
 
@@ -33,15 +41,24 @@ export default function HomeScreen({ onPokemonLoaded, onSelectPokemon }: HomeScr
 		return () => clearTimeout(timeoutId);
 	}, [searchValue]);
 
-	const visiblePokemon = useMemo(() => {
-		return pokemon.filter((item) => {
-			if (selectedType && !item.types.includes(selectedType)) {
-				return false;
-			}
+	const hasActiveFilters =
+		selectedTypes.length > 0 || selectedGenerations.length > 0 || sort !== DEFAULT_SORT;
 
-			return matchesPokemonSearch(item, appliedQuery);
+	const visiblePokemon = useMemo(() => {
+		const filtered = applyPokemonFilters(pokemon, {
+			generations: selectedGenerations,
+			sort,
+			types: selectedTypes,
 		});
-	}, [appliedQuery, pokemon, selectedType]);
+
+		return filtered.filter((item) => matchesPokemonSearch(item, appliedQuery));
+	}, [appliedQuery, pokemon, selectedGenerations, selectedTypes, sort]);
+
+	const clearFilters = useCallback(() => {
+		setSelectedTypes([]);
+		setSelectedGenerations([]);
+		setSort(DEFAULT_SORT);
+	}, []);
 
 	const loadPokemons = useCallback(() => {
 		listPokemons()
@@ -92,6 +109,28 @@ export default function HomeScreen({ onPokemonLoaded, onSelectPokemon }: HomeScr
 				onSubmitSearch={() => setAppliedQuery(searchValue.trim())}
 				searchValue={searchValue}
 			/>
+			{dashboardTab === 'filter' ? (
+				<PokemonFilterPanel
+					generations={selectedGenerations}
+					onChangeSort={setSort}
+					onToggleGeneration={(generation) => setSelectedGenerations((current) => toggleValue(current, generation))}
+					onToggleType={(type) => setSelectedTypes((current) => toggleValue(current, type))}
+					sort={sort}
+					types={selectedTypes}
+				/>
+			) : null}
+			<ActiveFiltersBar
+				generations={selectedGenerations}
+				hasActiveFilters={hasActiveFilters}
+				onClear={clearFilters}
+				onRemoveGeneration={(generation) =>
+					setSelectedGenerations((current) => current.filter((item) => item !== generation))
+				}
+				onRemoveType={(type) => setSelectedTypes((current) => current.filter((item) => item !== type))}
+				onResetSort={() => setSort(DEFAULT_SORT)}
+				sort={sort}
+				types={selectedTypes}
+			/>
 			{loading ? (
 				<View style={styles.skeletonList}>
 					{Array.from({ length: 6 }).map((_, index) => (
@@ -100,29 +139,6 @@ export default function HomeScreen({ onPokemonLoaded, onSelectPokemon }: HomeScr
 				</View>
 			) : null}
 			{error ? <Text style={styles.errorText}>{error}</Text> : null}
-			{dashboardTab === 'filter' ? (
-				<ScrollView
-					contentContainerStyle={styles.filterContent}
-					horizontal
-					showsHorizontalScrollIndicator={false}
-					style={styles.filterBar}
-				>
-					<TypeBadge
-						label="All"
-						onPress={() => setSelectedType(null)}
-						selected={selectedType === null}
-						type="all"
-					/>
-					{POKEMON_TYPES.map((type) => (
-						<TypeBadge
-							key={type}
-							onPress={() => setSelectedType((current) => (current === type ? null : type))}
-							selected={selectedType === type}
-							type={type}
-						/>
-					))}
-				</ScrollView>
-			) : null}
 			{dashboardTab === 'favourites' ? (
 				<Text style={styles.placeholderText}>Favourites are not available yet.</Text>
 			) : (
@@ -130,7 +146,9 @@ export default function HomeScreen({ onPokemonLoaded, onSelectPokemon }: HomeScr
 					ListEmptyComponent={
 						loading ? null : (
 							<Text style={styles.emptyText}>
-								{appliedQuery ? `No Pokemon found for "${appliedQuery}".` : 'No Pokemon to display.'}
+								{appliedQuery || hasActiveFilters
+									? 'No Pokemon match the current search and filters.'
+									: 'No Pokemon to display.'}
 							</Text>
 						)
 					}
@@ -161,18 +179,6 @@ const styles = StyleSheet.create({
 	listContent: {
 		gap: 8,
 		padding: 16,
-	},
-	filterBar: {
-		flexGrow: 0,
-		minHeight: 56,
-		borderBottomWidth: StyleSheet.hairlineWidth,
-		borderBottomColor: '#262626',
-	},
-	filterContent: {
-		gap: 8,
-		paddingHorizontal: 16,
-		paddingVertical: 12,
-		alignItems: 'center',
 	},
 	skeletonList: {
 		gap: 8,
